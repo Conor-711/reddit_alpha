@@ -39,9 +39,10 @@ export function BookmarkHint() {
   const [subPre, subPost] = t.sub.split("{combo}");
 
   return (
-    <div className="fixed top-0.5 z-[80] pointer-events-none flex flex-col items-end sm:items-center right-3 sm:right-auto sm:left-[75.5%] sm:-translate-x-1/2">
-      {/* 上指箭头 → 浏览器地址栏右侧的「收藏 ★」星标 */}
-      <div className="pr-3 sm:pr-0 text-reddit animate-bounce drop-shadow-[0_2px_6px_rgba(252,62,2,.5)]">
+    <div className="fixed top-0.5 z-[80] pointer-events-none flex flex-col items-end right-3 sm:right-[27rem]">
+      {/* 上指箭头 → 浏览器地址栏右侧的「收藏 ★」星标。
+          星标到窗口右缘的距离≈固定(扩展图标右对齐)，故用固定 rem 偏移比百分比更稳。 */}
+      <div className="pr-3 sm:pr-1 text-reddit animate-bounce drop-shadow-[0_2px_6px_rgba(252,62,2,.5)]">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M12 20V5M5 12l7-7 7 7" />
         </svg>

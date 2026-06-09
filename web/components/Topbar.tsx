@@ -19,9 +19,9 @@ export function Topbar({ lang, dict }: { lang: Locale; dict: Dictionary }) {
         <div className="flex items-center gap-2 min-w-0">
           <SidebarToggle />
           <LocaleLink href="/" className="lg:hidden flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
+            <span className="w-7 h-7 rounded-xl overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`${BASE}/logo.png`} alt="redditalpha logo" className="w-full h-full object-contain" />
+              <img src={`${BASE}/logo.png`} alt="redditalpha logo" className="w-full h-full object-contain rounded-xl" />
             </span>
             <span className="font-display font-extrabold text-cream">
               reddit<span className="text-reddit">alpha</span>
@@ -36,7 +36,10 @@ export function Topbar({ lang, dict }: { lang: Locale; dict: Dictionary }) {
             <span className="w-1.5 h-1.5 rounded-full bg-bull animate-pulse" />
             {meta.lastUpdated ? `${dict.chrome.updatedPrefix}${timeAgo(meta.lastUpdated, lang)}` : dict.chrome.noData}
           </div>
-          <LanguageSwitcher />
+          {/* 桌面端：语言/主题切换已移到侧边栏下半部分；此处仅移动端显示 */}
+          <div className="lg:hidden">
+            <LanguageSwitcher />
+          </div>
           {/* v1：账号系统暂未启用 */}
         </div>
       </div>

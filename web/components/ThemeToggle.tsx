@@ -5,13 +5,20 @@ import { useLocale } from "./i18n/LocaleProvider";
 
 const KEY = "redditalpha:theme";
 
-export function ThemeToggle() {
+// variant="fab"：右下角悬浮按钮（仅移动端显示，桌面端用侧边栏内的 inline）
+// variant="inline"：嵌入侧边栏下半部分的行内按钮
+export function ThemeToggle({ variant = "fab" }: { variant?: "fab" | "inline" }) {
   const { dict } = useLocale();
   const [theme, setTheme] = useState<"dark" | "light">("light");
 
   useEffect(() => {
-    const stored = (localStorage.getItem(KEY) as "dark" | "light" | null) ?? null;
-    setTheme(stored ?? (document.documentElement.classList.contains("dark") ? "dark" : "light"));
+    const read = () =>
+      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    read();
+    // 同步另一处实例（fab / inline）切换后的状态
+    const obs = new MutationObserver(read);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
   }, []);
 
   const toggle = () => {
@@ -25,13 +32,18 @@ export function ThemeToggle() {
     }
   };
 
+  const cls =
+    variant === "inline"
+      ? "grid place-items-center w-9 h-9 rounded-full ring-1 ring-inset ring-line bg-white/[.03] text-neutral-400 hover:text-reddit hover:bg-white/[.06] transition shrink-0"
+      : "fixed bottom-5 right-5 z-[60] lg:hidden grid place-items-center w-11 h-11 rounded-full panel ring-1 ring-inset ring-line text-neutral-400 hover:text-reddit transition hover:-translate-y-0.5";
+
   return (
     <button
       type="button"
       onClick={toggle}
       aria-label={theme === "light" ? dict.chrome.themeToDark : dict.chrome.themeToLight}
       title={theme === "light" ? dict.chrome.themeDark : dict.chrome.themeLight}
-      className="fixed bottom-5 right-5 z-[60] grid place-items-center w-11 h-11 rounded-full panel ring-1 ring-inset ring-line text-neutral-400 hover:text-reddit transition hover:-translate-y-0.5"
+      className={cls}
     >
       {theme === "dark" ? <SunIcon /> : <MoonIcon />}
     </button>

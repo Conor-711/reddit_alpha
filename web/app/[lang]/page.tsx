@@ -1,6 +1,6 @@
 import { LocaleLink } from "@/components/i18n/LocaleLink";
 import { IconUpvote, IconArrow } from "@/components/icons";
-import { RedditMark } from "@/components/reddit";
+import { RedditMark, SnooCharacter } from "@/components/reddit";
 import { fmtInt, fmtCompact, subColor } from "@/lib/format";
 import { getLandingStats } from "@/lib/queries";
 import { getDictionary, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
@@ -36,9 +36,9 @@ export default function Landing({ params }: { params: { lang: string } }) {
       {/* 顶部品牌 */}
       <header className="flex items-center justify-center sm:justify-start px-6 sm:px-10 h-20 shrink-0">
         <div className="flex items-center gap-2.5">
-          <span className="w-9 h-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
+          <span className="w-9 h-9 rounded-xl overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain" />
+            <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain rounded-xl" />
           </span>
           <span className="font-display font-extrabold text-cream text-[18px] tracking-tight">
             reddit<span className="text-reddit">alpha</span>
@@ -122,8 +122,27 @@ export default function Landing({ params }: { params: { lang: string } }) {
             ))}
           </div>
 
+          {/* Reddit 吉祥物：社区「股神」小队，站在一条柔光地面上 */}
+          <div className="relative mt-16">
+            <div
+              className="absolute inset-x-0 bottom-1 h-px"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(255,69,0,.35), transparent)" }}
+            />
+            <div className="relative flex items-end justify-center gap-3 sm:gap-7">
+              {([2, 1, 3, 4] as const).map((n, i) => (
+                <SnooCharacter
+                  key={n}
+                  n={n}
+                  className={`w-auto drop-shadow-[0_14px_22px_rgba(0,0,0,.22)] transition duration-300 hover:-translate-y-1.5 ${
+                    i === 1 || i === 2 ? "h-24 sm:h-36" : "h-20 sm:h-28"
+                  } ${i % 2 ? "translate-y-1" : ""}`}
+                />
+              ))}
+            </div>
+          </div>
+
           {/* 页脚声明 */}
-          <div className="mt-10 flex items-center justify-center gap-1.5 text-[11px] text-neutral-600">
+          <div className="mt-12 flex items-center justify-center gap-1.5 text-[11px] text-neutral-600">
             <RedditMark size={14} />
             <span>{t.footer}</span>
           </div>

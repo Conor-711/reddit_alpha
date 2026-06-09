@@ -287,12 +287,16 @@ html.dark .ring-white\/15 { --tw-ring-color: rgb(255 255 255 / 0.15); }
 html.dark .hover\:ring-white\/20:hover { --tw-ring-color: rgb(255 255 255 / 0.2); }
 html.dark .border-white\/\[\.05\] { border-color: rgb(255 255 255 / 0.05); }
 
-/* ===================== 侧边栏折叠 / 展开 ===================== */
+/* ===================== 侧边栏折叠 / 展开（折叠=窄图标轨，仍可点击）===================== */
 @media (min-width: 1024px) {
-  .app-sidebar { transition: transform 0.25s ease; }
-  .app-main { transition: padding-left 0.25s ease; }
-  html[data-sb="collapsed"] .app-sidebar { transform: translateX(-100%); }
-  html[data-sb="collapsed"] .app-main { padding-left: 0; }
+  .app-sidebar { transition: width 0.22s ease; overflow-x: hidden; }
+  .app-main { transition: padding-left 0.22s ease; }
+  html[data-sb="collapsed"] .app-sidebar { width: 64px; }
+  html[data-sb="collapsed"] .app-main { padding-left: 64px; }
+  /* 折叠时：隐藏文字标签 / 辅助块，图标行居中 */
+  html[data-sb="collapsed"] .sb-label { display: none; }
+  html[data-sb="collapsed"] .sb-hide { display: none; }
+  html[data-sb="collapsed"] .sb-row { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
 }
 
 /* ===================== 帖子/评论正文排版（阅读优化） ===================== */

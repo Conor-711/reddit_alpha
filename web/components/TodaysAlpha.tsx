@@ -3,7 +3,7 @@
 import { LocaleLink } from "./i18n/LocaleLink";
 import { useLocale } from "./i18n/LocaleProvider";
 import { SentPill, TickerChip, SubredditChip } from "./ui";
-import { RedditMark, SnooMascot } from "./reddit";
+import { RedditMark, SnooCharacter } from "./reddit";
 import { IconUpvote, IconComment, IconArrow, IconFlame } from "./icons";
 import { timeAgo, fmtCompact } from "@/lib/format";
 import type { AlphaRow } from "@/lib/queries";
@@ -30,40 +30,46 @@ export function TodaysAlpha({ alphas }: { alphas: AlphaRow[] }) {
         boxShadow: "0 18px 50px -18px rgba(255,69,0,0.65)",
       }}
     >
-      {/* Snoo 水印 + 左上高光，强化「Reddit 官方」质感 */}
-      <SnooMascot className="pointer-events-none absolute -right-5 -top-10 w-52 h-52 text-white/[.10] rotate-6" />
+      {/* 左上高光 */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{ background: "radial-gradient(120% 80% at 0% 0%, rgba(255,255,255,.20), transparent 55%)" }}
       />
 
       <div className="relative p-5 sm:p-7">
-        {/* 头部 */}
-        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-          <div className="flex items-center gap-3.5">
-            <span className="grid place-items-center w-12 h-12 rounded-2xl shrink-0" style={GLASS}>
-              <RedditMark size={28} />
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-[.16em] text-white/85">{t.alphaEyebrow}</span>
-                <span
-                  className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full text-white"
-                  style={GLASS}
-                >
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-70" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+        {/* 头部：左=品牌/标题/副文案，右=Reddit 吉祥物 */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3.5">
+              <span className="grid place-items-center w-12 h-12 rounded-2xl shrink-0" style={GLASS}>
+                <RedditMark size={28} />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-[.16em] text-white/85">{t.alphaEyebrow}</span>
+                  <span
+                    className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full text-white"
+                    style={GLASS}
+                  >
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-70" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                    </span>
+                    {t.alphaWindow}
                   </span>
-                  {t.alphaWindow}
-                </span>
+                </div>
+                <h2 className="mt-1.5 font-display font-extrabold text-white text-[clamp(23px,3.2vw,32px)] leading-none tracking-tight drop-shadow-sm">
+                  {t.alphaTitle}
+                </h2>
               </div>
-              <h2 className="mt-1.5 font-display font-extrabold text-white text-[clamp(23px,3.2vw,32px)] leading-none tracking-tight drop-shadow-sm">
-                {t.alphaTitle}
-              </h2>
             </div>
+            <p className="mt-3 max-w-lg text-[13px] leading-relaxed text-white/85">{t.alphaSub}</p>
           </div>
-          <p className="max-w-md text-[13px] leading-relaxed text-white/85">{t.alphaSub}</p>
+          {/* Reddit 吉祥物（宇航员 Snoo），橙底上的白灰角色对比最佳 */}
+          <SnooCharacter
+            n={1}
+            className="hidden md:block h-24 lg:h-32 w-auto -mt-3 -mr-1 shrink-0 drop-shadow-[0_10px_18px_rgba(0,0,0,.30)]"
+          />
         </div>
 
         {/* 卡片 */}

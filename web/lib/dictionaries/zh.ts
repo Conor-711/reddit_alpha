@@ -8,6 +8,7 @@ export const zh = {
   },
   nav: {
     dashboard: "看板",
+    search: "搜索",
     trending: "异动",
     narratives: "叙事",
     leaderboard: "作者榜",

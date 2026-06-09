@@ -5,7 +5,6 @@ import { FeedCard } from "@/components/FeedCard";
 import { NarrativeCard } from "@/components/NarrativeCard";
 import { TodaysAlpha } from "@/components/TodaysAlpha";
 import { IconFlame, IconWaves } from "@/components/icons";
-import { SearchHero } from "@/components/SearchHero";
 import { AdSlot } from "@/components/AdSlot";
 import { fmtInt, sentTextClass } from "@/lib/format";
 import { getDictionary, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
@@ -30,9 +29,6 @@ export default function Overview({ params }: { params: { lang: string } }) {
     <div className="space-y-4">
       {/* 首页头牌：今日 Reddit Alpha（置顶、Reddit 橙主题、视觉最强） */}
       <TodaysAlpha alphas={alpha} />
-
-      {/* 主入口：查任意个股的 Reddit 情报 */}
-      <SearchHero suggestions={mind.slice(0, 6).map((m) => m.ticker)} />
 
       {/* Masthead */}
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 pb-4 border-b border-line">
@@ -124,7 +120,7 @@ export default function Overview({ params }: { params: { lang: string } }) {
       {/* 第二行：异动飙升 + 主导叙事 */}
       <div className="grid lg:grid-cols-3 gap-4">
         <Panel className="p-5">
-          <SectionTitle title={t.spikeTitle} href="/trending" />
+          <SectionTitle title={t.spikeTitle} />
           <div className="space-y-1">
             {spikes.map((x) => (
               <LocaleLink
@@ -147,7 +143,7 @@ export default function Overview({ params }: { params: { lang: string } }) {
         </Panel>
 
         <div className="lg:col-span-2">
-          <SectionTitle title={t.narrativesTitle} href="/narratives" />
+          <SectionTitle title={t.narrativesTitle} />
           <div className="grid sm:grid-cols-2 gap-4">
             {narratives.map((n) => (
               <NarrativeCard key={n.id} n={n} />

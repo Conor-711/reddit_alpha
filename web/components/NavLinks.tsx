@@ -18,12 +18,13 @@ export function NavLinks() {
           <LocaleLink
             key={href}
             href={href}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${
+            title={dict.nav[key]}
+            className={`sb-row flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${
               active ? "bg-reddit/12 text-reddit" : "text-neutral-400 hover:text-cream hover:bg-white/[.04]"
             }`}
           >
-            <Icon className="w-[18px] h-[18px]" />
-            {dict.nav[key]}
+            <Icon className="w-[18px] h-[18px] shrink-0" />
+            <span className="sb-label">{dict.nav[key]}</span>
           </LocaleLink>
         );
       })}

@@ -28,9 +28,9 @@ export function AuthShell({
       >
         <div className="w-full max-w-[400px] py-8">
           <LocaleLink href="/" className="flex items-center justify-center gap-2 mb-6">
-            <span className="w-8 h-8 rounded-lg overflow-hidden bg-white ring-1 ring-white/10">
+            <span className="w-8 h-8 rounded-xl overflow-hidden bg-white ring-1 ring-white/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain" />
+              <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain rounded-xl" />
             </span>
             <span className="font-display font-extrabold text-cream text-xl">
               reddit<span className="text-reddit">alpha</span>

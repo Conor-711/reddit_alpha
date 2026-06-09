@@ -54,9 +54,9 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
         {/* 顶部：品牌 + 进度 */}
         <header className="flex items-center justify-between gap-4 px-6 sm:px-10 h-20 shrink-0">
           <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
+            <span className="w-8 h-8 rounded-xl overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain" />
+              <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain rounded-xl" />
             </span>
             <span className="font-display font-extrabold text-cream text-[16px] tracking-tight">
               reddit<span className="text-reddit">alpha</span>

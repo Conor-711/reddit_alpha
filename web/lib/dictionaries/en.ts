@@ -9,6 +9,7 @@ export const en: Dictionary = {
   },
   nav: {
     dashboard: "Dashboard",
+    search: "Search",
     trending: "Trending",
     narratives: "Narratives",
     leaderboard: "Leaderboard",
