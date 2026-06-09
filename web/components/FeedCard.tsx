@@ -1,9 +1,14 @@
+"use client";
+
+import { LocaleLink } from "./i18n/LocaleLink";
+import { useLocale } from "./i18n/LocaleProvider";
 import { SentPill, TickerChip, ThemeTag, SubredditChip, Avatar } from "./ui";
 import { IconUpvote, IconDownvote, IconComment } from "./icons";
-import { timeAgo, fmtCompact, REDDIT } from "@/lib/format";
+import { timeAgo, fmtCompact } from "@/lib/format";
 import type { FeedRow } from "@/lib/queries";
 
 export function FeedCard({ p }: { p: FeedRow }) {
+  const { lang, dict } = useLocale();
   return (
     <div className="panel rounded-2xl panel-hover flex overflow-hidden">
       {/* 投票轨（Reddit 招牌） */}
@@ -22,20 +27,18 @@ export function FeedCard({ p }: { p: FeedRow }) {
               · <Avatar name={p.author} size={15} /> u/{p.author}
             </span>
           )}
-          <span>· {timeAgo(p.created)}</span>
+          <span>· {timeAgo(p.created, lang)}</span>
           {p.flair && (
             <span className="px-1.5 py-0.5 rounded-full bg-white/[.06] text-neutral-400 text-[10px] font-medium">{p.flair}</span>
           )}
         </div>
 
-        <a
-          href={`${REDDIT}${p.permalink}`}
-          target="_blank"
-          rel="noreferrer"
+        <LocaleLink
+          href={`/post/${p.id}`}
           className="mt-1 block font-medium text-cream hover:text-reddit transition leading-snug"
         >
           {p.title}
-        </a>
+        </LocaleLink>
 
         {p.tldr && <p className="mt-1.5 text-sm text-neutral-400 leading-relaxed line-clamp-2">{p.tldr}</p>}
 
@@ -44,7 +47,7 @@ export function FeedCard({ p }: { p: FeedRow }) {
             <IconComment className="w-3.5 h-3.5" /> {fmtCompact(p.comments)}
           </span>
           <SentPill stance={p.stance} />
-          {p.quality >= 0.7 && <span className="text-[11px] text-gold font-medium">★ 高信号</span>}
+          {p.quality >= 0.7 && <span className="text-[11px] font-bold metal-text m-gold">{dict.common.highSignal}</span>}
           {(p.tickers.length > 0 || p.themes.length > 0) && <span className="w-px h-3.5 bg-line mx-0.5" />}
           {p.tickers.slice(0, 5).map((t) => (
             <TickerChip key={t.ticker} ticker={t.ticker} size="xs" />

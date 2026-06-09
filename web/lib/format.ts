@@ -5,8 +5,11 @@ export function fmtInt(n: number): string {
 }
 
 export function fmtCompact(n: number): string {
-  if (n == null) return "0";
-  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "k";
+  if (!n) return "0";
+  const a = Math.abs(n);
+  if (a >= 1e9) return (n / 1e9).toFixed(a >= 1e10 ? 0 : 1) + "B";
+  if (a >= 1e6) return (n / 1e6).toFixed(a >= 1e7 ? 0 : 1) + "M";
+  if (a >= 1e3) return (n / 1e3).toFixed(a >= 1e4 ? 0 : 1) + "K";
   return String(Math.round(n));
 }
 
@@ -25,13 +28,19 @@ export function parseUTC(s: string): Date {
   return new Date(s.replace(" ", "T").replace(/(\.\d+)?$/, "") + "Z");
 }
 
-export function timeAgo(s: string): string {
+export function timeAgo(s: string, lang: "zh" | "en" = "zh"): string {
   const then = parseUTC(s).getTime();
   const mins = Math.max(0, Math.floor((Date.now() - then) / 60000));
-  if (mins < 60) return `${mins} 分钟前`;
   const hrs = Math.floor(mins / 60);
+  const days = Math.floor(hrs / 24);
+  if (lang === "en") {
+    if (mins < 60) return `${mins}m ago`;
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${days}d ago`;
+  }
+  if (mins < 60) return `${mins} 分钟前`;
   if (hrs < 24) return `${hrs} 小时前`;
-  return `${Math.floor(hrs / 24)} 天前`;
+  return `${days} 天前`;
 }
 
 // 情绪 → 颜色（图表用 hex）
@@ -48,18 +57,31 @@ export function sentTextClass(score: number): string {
   return "text-neutral-400";
 }
 
+export function stanceLabel(stance: string, lang: "zh" | "en" = "zh"): string {
+  const map = {
+    zh: { bull: "看多", bear: "看空", neutral: "中性" },
+    en: { bull: "Bullish", bear: "Bearish", neutral: "Neutral" },
+  } as const;
+  return (map[lang] as Record<string, string>)[stance] ?? map[lang].neutral;
+}
+
+// 向后兼容（默认中文）；新代码请用 stanceLabel(stance, lang)
 export function stanceCN(stance: string): string {
-  return { bull: "看多", bear: "看空", neutral: "中性" }[stance] ?? "中性";
+  return stanceLabel(stance, "zh");
 }
 
 export function moodColor(score: number): string {
   return sentHex(score);
 }
 
+export function hhmm(s: string): string {
+  return parseUTC(s).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
 export const REDDIT = "https://www.reddit.com";
 
 // subreddit 小圆标配色（按名字确定性取色）
-const SUB_PALETTE = ["#FC3E02", "#0079D3", "#24B47E", "#E6B450", "#7193FF", "#F0556E", "#46D160", "#FF8717"];
+const SUB_PALETTE = ["#FF4500", "#0079D3", "#24B47E", "#E6B450", "#7193FF", "#F0556E", "#46D160", "#FF8717"];
 export function subColor(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;

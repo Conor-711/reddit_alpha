@@ -124,6 +124,57 @@ export function getAllTickerSymbols(): string[] {
   return all<{ ticker: string }>("SELECT ticker FROM ticker_meta").map((r) => r.ticker);
 }
 
+export interface CommentRow {
+  id: string; author: string | null; body: string; score: number; created: string; parent: string | null;
+}
+
+export function getAllPostIds(): string[] {
+  return all<{ id: string }>("SELECT id FROM posts").map((r) => r.id);
+}
+
+// 站内帖子详情：正文 + AI 摘要 + 评论（按分数排，含父子关系）。供 /post/[id] 渲染，不跳 Reddit。
+export function getPostDetail(id: string) {
+  const post = get<{
+    id: string; title: string; selftext: string; permalink: string; subreddit: string;
+    author: string | null; score: number; comments: number; created: string; flair: string | null; upvote_ratio: number;
+  }>(
+    `SELECT p.id, p.title, p.selftext, p.permalink, p.subreddit_id AS subreddit, p.author_id AS author,
+            p.score, p.num_comments AS comments, p.created_utc AS created, p.flair, p.upvote_ratio
+       FROM posts p WHERE p.id = ?`,
+    id
+  );
+  if (!post) return null;
+
+  const a = get<{
+    stance: string; sentiment_score: number; quality_score: number; tldr: string;
+    themes: string; tickers: string; bull_points: string; bear_points: string;
+  }>(
+    `SELECT stance, sentiment_score, quality_score, tldr, themes, tickers, bull_points, bear_points
+       FROM item_analysis WHERE item_id = ? AND item_type='post'`,
+    id
+  );
+  const analysis = a
+    ? {
+        stance: a.stance ?? "neutral",
+        sentiment: a.sentiment_score ?? 0,
+        quality: a.quality_score ?? 0,
+        tldr: a.tldr ?? "",
+        themes: parseJSON<string[]>(a.themes, []),
+        tickers: parseJSON<{ ticker: string; relevance: number }[]>(a.tickers, []),
+        bull: parseJSON<string[]>(a.bull_points, []),
+        bear: parseJSON<string[]>(a.bear_points, []),
+      }
+    : null;
+
+  const comments = all<CommentRow>(
+    `SELECT id, author_id AS author, body, score, created_utc AS created, parent_id AS parent
+       FROM comments WHERE post_id = ? ORDER BY score DESC`,
+    id
+  );
+
+  return { post, analysis, comments };
+}
+
 export function getTickerList(): { ticker: string; name: string; mindshare: number }[] {
   return all(
     `SELECT r.ticker, COALESCE(tm.company_name,'') AS name, r.mindshare_pct AS mindshare
@@ -170,15 +221,15 @@ export function getTickerDetail(symbol: string) {
     )
   );
   // 多空论点：从相关帖的 bull/bear_points 汇集
-  const bull: { point: string; permalink: string; title: string }[] = [];
-  const bear: { point: string; permalink: string; title: string }[] = [];
+  const bull: { id: string; point: string; permalink: string; title: string }[] = [];
+  const bear: { id: string; point: string; permalink: string; title: string }[] = [];
   for (const p of posts) {
     const a = get<{ bull_points: string; bear_points: string }>(
       "SELECT bull_points, bear_points FROM item_analysis WHERE item_id=? AND item_type='post'",
       p.id
     );
-    for (const pt of parseJSON<string[]>(a?.bull_points, [])) bull.push({ point: pt, permalink: p.permalink, title: p.title });
-    for (const pt of parseJSON<string[]>(a?.bear_points, [])) bear.push({ point: pt, permalink: p.permalink, title: p.title });
+    for (const pt of parseJSON<string[]>(a?.bull_points, [])) bull.push({ id: p.id, point: pt, permalink: p.permalink, title: p.title });
+    for (const pt of parseJSON<string[]>(a?.bear_points, [])) bear.push({ id: p.id, point: pt, permalink: p.permalink, title: p.title });
   }
   const narrs = all<NarrativeRow>(
     `SELECT n.id, n.slug, n.name, n.summary, n.post_count, n.ticker_count, n.heat
@@ -187,7 +238,28 @@ export function getTickerDetail(symbol: string) {
     ticker
   ).map((n) => ({ ...n, tickers: [] as { ticker: string; weight: number }[] }));
 
-  return { ticker, meta, roll, series, bySub, posts, bull: bull.slice(0, 6), bear: bear.slice(0, 6), narratives: narrs };
+  // 可信声音：讨论该标的的作者，按内容质量 × 影响力排（类比 TipRanks 排分析师）
+  const voices = all<{ author: string; posts: number; score: number; quality: number; sentiment: number }>(
+    `SELECT p.author_id AS author, COUNT(*) AS posts, COALESCE(SUM(p.score),0) AS score,
+            AVG(ia.quality_score) AS quality, AVG(ia.sentiment_score) AS sentiment
+       FROM posts p JOIN mentions m ON m.item_id=p.id AND m.item_type='post' AND m.ticker = ?
+       LEFT JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
+      WHERE p.author_id IS NOT NULL
+      GROUP BY p.author_id
+      ORDER BY AVG(ia.quality_score) DESC, SUM(p.score) DESC
+      LIMIT 6`,
+    ticker
+  ).map((v) => ({ ...v, quality: v.quality ?? 0, sentiment: v.sentiment ?? 0 }));
+
+  // 催化剂 / 主题：从相关帖聚合（社区在盯什么）
+  const themeCount = new Map<string, number>();
+  for (const p of posts) for (const t of p.themes) themeCount.set(t, (themeCount.get(t) || 0) + 1);
+  const themes = [...themeCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([name, count]) => ({ name, count }));
+
+  return { ticker, meta, roll, series, bySub, posts, bull: bull.slice(0, 6), bear: bear.slice(0, 6), narratives: narrs, voices, themes };
 }
 
 export function getDailyBrief() {
@@ -219,4 +291,49 @@ export function getCommunities() {
             (SELECT COUNT(*) FROM posts p WHERE p.subreddit_id = s.id) AS posts
        FROM subreddits s ORDER BY posts DESC`
   );
+}
+
+// 个性化看板用：所有在窗口内的标的(轻量字段) + 叙事，序列化给客户端按 onboarding 选择筛选。
+export interface TickerLite {
+  ticker: string; name: string; sector: string | null;
+  mindshare: number; sentiment: number; mentions: number;
+}
+export function getDashboardBundle() {
+  const tickers = all<TickerLite>(
+    `SELECT r.ticker, COALESCE(tm.company_name,'') AS name, tm.sector,
+            r.mindshare_pct AS mindshare, r.sentiment_avg AS sentiment, r.mention_count AS mentions
+       FROM ticker_rollup r LEFT JOIN ticker_meta tm ON tm.ticker = r.ticker
+      WHERE r.bucket='window' ORDER BY r.mindshare_pct DESC`
+  );
+  return { tickers, narratives: getNarratives(12) };
+}
+
+// Onboarding 用：可选「领域」(有数据的 sector) + 热门标的(供选持仓)，均为真实数据。
+export function getOnboardingData() {
+  const sectors = all<{ key: string; count: number }>(
+    `SELECT tm.sector AS key, COUNT(DISTINCT r.ticker) AS count
+       FROM ticker_rollup r JOIN ticker_meta tm ON tm.ticker = r.ticker
+      WHERE r.bucket='window' AND tm.sector IS NOT NULL AND tm.sector <> ''
+      GROUP BY tm.sector ORDER BY count DESC`
+  );
+  const tickers = all<{ ticker: string; name: string; sector: string | null }>(
+    `SELECT r.ticker, COALESCE(tm.company_name,'') AS name, tm.sector
+       FROM ticker_rollup r LEFT JOIN ticker_meta tm ON tm.ticker = r.ticker
+      WHERE r.bucket='window' ORDER BY r.mindshare_pct DESC LIMIT 30`
+  );
+  return { sectors, tickers };
+}
+
+// Landing page 用：聚合真实数据做信任背书（社区数、总订阅、帖子、标的、作者）。
+export function getLandingStats() {
+  const subs = all<{ id: string; subscribers: number }>(
+    "SELECT id, subscribers FROM subreddits ORDER BY subscribers DESC"
+  );
+  const meta = getMeta();
+  const authors =
+    get<{ n: number }>(
+      "SELECT COUNT(DISTINCT author_id) AS n FROM posts WHERE author_id IS NOT NULL"
+    )?.n ?? 0;
+  const totalSubscribers = subs.reduce((s, c) => s + (c.subscribers || 0), 0);
+  return { subs, totalSubscribers, posts: meta.posts, tickers: meta.tickers, authors };
 }

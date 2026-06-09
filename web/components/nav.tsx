@@ -1,10 +1,16 @@
-import { IconGrid, IconTrend, IconLayers, IconList, IconTrophy, IconDoc } from "./icons";
+import { IconGrid, IconPulse, IconTrend, IconLayers, IconTrophy } from "./icons";
+import type { Dictionary } from "@/lib/i18n";
 
-export const NAV: { href: string; label: string; Icon: (p: { className?: string }) => JSX.Element }[] = [
-  { href: "/", label: "看板", Icon: IconGrid },
-  { href: "/trending", label: "异动", Icon: IconTrend },
-  { href: "/narratives", label: "叙事", Icon: IconLayers },
-  { href: "/feed", label: "帖子流", Icon: IconList },
-  { href: "/leaderboard", label: "作者榜", Icon: IconTrophy },
-  { href: "/brief", label: "简报", Icon: IconDoc },
+export type NavItem = {
+  href: string;
+  key: keyof Dictionary["nav"];
+  Icon: (p: { className?: string }) => JSX.Element;
+};
+
+export const NAV: NavItem[] = [
+  { href: "/dashboard", key: "dashboard", Icon: IconGrid },
+  { href: "/pulse", key: "pulse", Icon: IconPulse },
+  { href: "/trending", key: "trending", Icon: IconTrend },
+  { href: "/narratives", key: "narratives", Icon: IconLayers },
+  { href: "/leaderboard", key: "leaderboard", Icon: IconTrophy },
 ];

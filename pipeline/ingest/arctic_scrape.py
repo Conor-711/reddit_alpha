@@ -12,12 +12,14 @@ import requests
 
 from ..common.config import settings
 from ..common.db import session_scope
+from ..common.models import Comment
 from .reddit_ingest import (
     load_subreddit_config, store_mentions, upsert_author, upsert_post, upsert_subreddit,
 )
 from .ticker_extract import load_ticker_dict
 
 BASE = "https://arctic-shift.photon-reddit.com/api/posts/search"
+COMMENTS_BASE = "https://arctic-shift.photon-reddit.com/api/comments/search"
 UA = settings.reddit_user_agent or "RedditAlpha/0.1 (research)"
 
 
@@ -101,6 +103,57 @@ def scrape(days: int = 3, limit_per: int = 300) -> dict:
             print(f"  r/{name}: {len(items)} 帖")
 
     print(f"[scrape] 完成 {stats}")
+    return stats
+
+
+def fetch_comments(sess: requests.Session, post_id: str, limit: int = 100) -> list[dict]:
+    try:
+        r = sess.get(COMMENTS_BASE, params={"link_id": post_id, "limit": min(100, limit)}, timeout=30)
+    except requests.RequestException:
+        return []
+    if r.status_code != 200:
+        return []
+    return r.json().get("data", []) or []
+
+
+def scrape_comments(top_n: int = 400, per_post: int = 15, min_comments: int = 4, min_score: int = 0) -> dict:
+    """为热度最高的若干帖抓取高分评论，写入 comments 表（仅供站内展示，不参与 mention/分析）。"""
+    from sqlalchemy import desc, select
+
+    from ..common.models import Post
+
+    stats = {"posts_scanned": 0, "comments": 0}
+    sess = requests.Session()
+    sess.headers["User-Agent"] = UA
+    with session_scope() as s:
+        post_ids = [
+            r[0]
+            for r in s.execute(
+                select(Post.id).where(Post.num_comments >= min_comments).order_by(desc(Post.score)).limit(top_n)
+            ).all()
+        ]
+        for pid in post_ids:
+            items = fetch_comments(sess, pid)
+            stats["posts_scanned"] += 1
+            clean = [
+                it for it in items
+                if (it.get("body") or "") not in ("", "[deleted]", "[removed]") and it.get("id")
+            ]
+            clean.sort(key=lambda x: int(x.get("score", 0) or 0), reverse=True)
+            for it in clean[:per_post]:
+                if min_score and int(it.get("score", 0) or 0) < min_score:
+                    continue
+                author = it.get("author")
+                aid = upsert_author(s, author if author not in (None, "[deleted]") else None)
+                cu = it.get("created_utc")
+                created = dt.datetime.utcfromtimestamp(cu) if cu else dt.datetime.utcnow()
+                s.merge(Comment(
+                    id=it["id"], post_id=pid, author_id=aid, body=it.get("body") or "",
+                    score=int(it.get("score", 0) or 0), created_utc=created, parent_id=it.get("parent_id"),
+                ))
+                stats["comments"] += 1
+            time.sleep(0.4)
+    print(f"[scrape-comments] 完成 {stats}")
     return stats
 
 

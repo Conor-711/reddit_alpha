@@ -1,8 +1,10 @@
 "use client";
 
 import ReactECharts from "echarts-for-react";
+import { useIsLight } from "@/lib/useTheme";
 
 export function MoodGauge({ value, height = 170 }: { value: number; height?: number }) {
+  const fg = useIsLight() ? "#1a1a1b" : "#d7dadc";
   const option = {
     backgroundColor: "transparent",
     series: [
@@ -26,15 +28,15 @@ export function MoodGauge({ value, height = 170 }: { value: number; height?: num
             ],
           },
         },
-        pointer: { width: 4, length: "60%", itemStyle: { color: "#F4F1EA" } },
-        anchor: { show: true, size: 10, itemStyle: { color: "#F4F1EA" } },
+        pointer: { width: 4, length: "60%", itemStyle: { color: fg } },
+        anchor: { show: true, size: 10, itemStyle: { color: fg } },
         axisTick: { show: false },
         splitLine: { show: false },
         axisLabel: { show: false },
         detail: {
           valueAnimation: true,
           formatter: (v: number) => (v > 0 ? "+" : "") + v.toFixed(2),
-          color: "#F4F1EA",
+          color: fg,
           fontSize: 22,
           fontWeight: 700,
           fontFamily: "monospace",

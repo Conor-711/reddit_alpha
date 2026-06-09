@@ -1,18 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LocaleLink } from "./i18n/LocaleLink";
+import { useLocale } from "./i18n/LocaleProvider";
+import { stripLang } from "@/lib/i18n";
 import { NAV } from "./nav";
 
 export function NavLinks() {
-  const path = usePathname();
-  const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+  const { rest } = stripLang(usePathname() || "/");
+  const { dict } = useLocale();
+  const isActive = (href: string) => (href === "/" ? rest === "/" : rest.startsWith(href));
   return (
     <nav className="px-3 py-3 space-y-0.5">
-      {NAV.map(({ href, label, Icon }) => {
+      {NAV.map(({ href, key, Icon }) => {
         const active = isActive(href);
         return (
-          <Link
+          <LocaleLink
             key={href}
             href={href}
             className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${
@@ -20,8 +23,8 @@ export function NavLinks() {
             }`}
           >
             <Icon className="w-[18px] h-[18px]" />
-            {label}
-          </Link>
+            {dict.nav[key]}
+          </LocaleLink>
         );
       })}
     </nav>

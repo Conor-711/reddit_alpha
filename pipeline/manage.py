@@ -53,6 +53,11 @@ def cmd_scrape(args):
     scrape(days=args.days, limit_per=args.limit)
 
 
+def cmd_scrape_comments(args):
+    from .ingest.arctic_scrape import scrape_comments
+    scrape_comments(top_n=args.top, per_post=args.per_post, min_comments=args.min_comments)
+
+
 def cmd_extract(args):
     from .ingest.ticker_extract import extract_for_posts
     extract_for_posts(reextract=args.reextract)
@@ -141,6 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("ingest"); sp.add_argument("--once", action="store_true"); sp.add_argument("--no-comments", action="store_true"); sp.set_defaults(func=cmd_ingest)
     sub.add_parser("refresh").set_defaults(func=cmd_refresh)
     sp = sub.add_parser("scrape"); sp.add_argument("--days", type=int, default=3); sp.add_argument("--limit", type=int, default=300); sp.set_defaults(func=cmd_scrape)
+    sp = sub.add_parser("scrape-comments"); sp.add_argument("--top", type=int, default=400); sp.add_argument("--per-post", type=int, default=15); sp.add_argument("--min-comments", type=int, default=4); sp.set_defaults(func=cmd_scrape_comments)
     sp = sub.add_parser("extract"); sp.add_argument("--reextract", action="store_true"); sp.set_defaults(func=cmd_extract)
 
     sp = sub.add_parser("analyze"); sp.add_argument("--mock", action="store_true"); sp.add_argument("--limit", type=int, default=None); sp.set_defaults(func=cmd_analyze)

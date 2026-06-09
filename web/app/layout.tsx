@@ -1,22 +1,24 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
-import { Topbar } from "@/components/Topbar";
+import { AuthProvider } from "@/components/auth/AuthProvider";
+
+// 防闪烁：首屏渲染前按 localStorage 套用主题类（默认白天；夜间 = html.dark）。
+const THEME_INIT = `try{var t=localStorage.getItem('redditalpha:theme');var d=document.documentElement;if(t==='dark'){d.classList.add('dark')}else{d.classList.remove('dark')}}catch(e){}`;
 
 export const metadata: Metadata = {
   title: "redditalpha · Reddit 美股舆情情报",
-  description: "以专业方式分析 Reddit 财经板块的帖子数据：声量份额、情绪、异动、AI 叙事与每日简报。",
+  description:
+    "以专业方式分析 Reddit 财经板块的帖子数据：声量份额、情绪、异动、AI 叙事与每日简报。",
 };
 
+// 根布局只负责 html/body 外壳与全局 Provider；
+// 站点 chrome（侧栏/顶栏/信号条）在 app/[lang]/layout.tsx 内，受语言上下文包裹。
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN" className="dark">
+    <html lang="zh-CN" suppressHydrationWarning>
       <body className="bg-ink text-neutral-300 font-sans antialiased">
-        <Sidebar />
-        <div className="lg:pl-[232px]">
-          <Topbar />
-          <main className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1480px] mx-auto">{children}</main>
-        </div>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

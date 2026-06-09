@@ -1,15 +1,13 @@
-import Link from "next/link";
-import { sentTextClass, stanceCN, subColor } from "@/lib/format";
+"use client";
 
+import { LocaleLink } from "./i18n/LocaleLink";
+import { useLocale } from "./i18n/LocaleProvider";
+import { sentTextClass, stanceLabel, subColor } from "@/lib/format";
+import { SnooAvatar } from "./reddit";
+
+// 用户头像 = Reddit 风格的 Snoo（每个用户按名字确定性取色）。
 export function Avatar({ name, size = 20 }: { name: string; size?: number }) {
-  return (
-    <span
-      className="grid place-items-center rounded-full text-white font-bold shrink-0"
-      style={{ background: subColor(name || "?"), width: size, height: size, fontSize: Math.round(size * 0.42) }}
-    >
-      {(name || "?")[0]?.toUpperCase()}
-    </span>
-  );
+  return <SnooAvatar name={name || "?"} size={size} />;
 }
 
 export function SubredditChip({ name, className = "" }: { name: string; className?: string }) {
@@ -23,30 +21,72 @@ export function SubredditChip({ name, className = "" }: { name: string; classNam
   );
 }
 
-export function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`panel rounded-xl ${className}`}>{children}</div>;
+export function Panel({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  return <div className={`panel rounded-xl ${className}`} style={style}>{children}</div>;
 }
 
 export function Eyebrow({ children, color = "text-amber" }: { children: React.ReactNode; color?: string }) {
   return <div className={`text-[11px] font-semibold uppercase tracking-wider ${color}`}>{children}</div>;
 }
 
-export function SectionTitle({ title, hint, href }: { title: string; hint?: string; href?: string }) {
+// 编辑式页头：眉标 + 紧凑标题 + 底部发丝线 + 右侧可放 stat/操作。全站统一。
+export function PageHeader({
+  eyebrow,
+  eyebrowColor = "text-reddit",
+  title,
+  subtitle,
+  right,
+}: {
+  eyebrow: string;
+  eyebrowColor?: string;
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+}) {
   return (
-    <div className="flex items-end justify-between mb-3">
-      <h2 className="font-display font-bold text-cream text-lg">{title}</h2>
+    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-4 border-b border-line">
+      <div>
+        <Eyebrow color={eyebrowColor}>{eyebrow}</Eyebrow>
+        <h1 className="mt-1.5 font-display font-extrabold text-cream text-[22px] leading-none tracking-tight">{title}</h1>
+        {subtitle && <p className="mt-2 text-sm text-neutral-500 max-w-2xl">{subtitle}</p>}
+      </div>
+      {right && <div className="shrink-0">{right}</div>}
+    </div>
+  );
+}
+
+// 页头右侧的数据胶囊（label + 大数字）。
+export function HeaderStat({ label, value, tone = "text-cream" }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="px-4 py-2 rounded-lg ring-1 ring-inset ring-white/[.06] bg-white/[.012]">
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</div>
+      <div className={`mt-0.5 font-display font-bold text-lg tabular leading-none ${tone}`}>{value}</div>
+    </div>
+  );
+}
+
+export function SectionTitle({ title, hint, href }: { title: string; hint?: string; href?: string }) {
+  const { dict } = useLocale();
+  return (
+    <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="w-1 h-3.5 rounded-full bg-reddit" />
+        <h2 className="font-display font-bold text-cream text-[15px] tracking-tight">{title}</h2>
+      </div>
+      <div className="h-px flex-1 bg-line/70" />
       {href ? (
-        <Link href={href} className="text-xs text-neutral-500 hover:text-amber transition">
-          全部 →
-        </Link>
+        <LocaleLink href={href} className="text-xs text-neutral-500 hover:text-reddit transition shrink-0">
+          {dict.common.all} →
+        </LocaleLink>
       ) : hint ? (
-        <span className="text-xs text-neutral-600">{hint}</span>
+        <span className="text-xs text-neutral-600 shrink-0">{hint}</span>
       ) : null}
     </div>
   );
 }
 
 export function SentPill({ stance, score, className = "" }: { stance?: string; score?: number; className?: string }) {
+  const { lang } = useLocale();
   const s = stance ?? (score !== undefined ? (score > 0.15 ? "bull" : score < -0.15 ? "bear" : "neutral") : "neutral");
   const map: Record<string, string> = {
     bull: "bg-bull/12 text-bull",
@@ -56,21 +96,21 @@ export function SentPill({ stance, score, className = "" }: { stance?: string; s
   return (
     <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md ${map[s]} ${className}`}>
       <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
-      {stanceCN(s)}
+      {stanceLabel(s, lang)}
     </span>
   );
 }
 
 export function TickerChip({ ticker, size = "sm" }: { ticker: string; size?: "sm" | "xs" }) {
   return (
-    <Link
+    <LocaleLink
       href={`/ticker/${ticker}`}
       className={`inline-flex items-center font-mono font-medium rounded-md bg-white/[.04] text-neutral-200 hover:bg-amber/15 hover:text-amber transition ring-1 ring-inset ring-white/8 ${
         size === "xs" ? "text-[11px] px-1.5 py-0.5" : "text-xs px-2 py-0.5"
       }`}
     >
       {ticker}
-    </Link>
+    </LocaleLink>
   );
 }
 
