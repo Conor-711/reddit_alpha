@@ -23,6 +23,21 @@ def cmd_load_sample(args):
     load_sample()
 
 
+def cmd_ensure_sample(args):
+    """若库内无帖子（如真实爬取失败），用样本兜底，保证站点不空。"""
+    from sqlalchemy import func, select
+    from .common.db import session_scope
+    from .common.models import Post
+    with session_scope() as s:
+        n = s.execute(select(func.count()).select_from(Post)).scalar_one()
+    if n == 0:
+        print("[ensure-sample] 库内无帖子，载入样本兜底。")
+        from .ingest.sample_loader import load_sample
+        load_sample()
+    else:
+        print(f"[ensure-sample] 已有 {n} 帖，跳过。")
+
+
 def cmd_ingest(args):
     from .ingest.reddit_ingest import ingest_once
     ingest_once(with_comments=not args.no_comments)
@@ -121,6 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("seed-tickers"); sp.add_argument("--fallback", action="store_true"); sp.set_defaults(func=cmd_seed)
     sub.add_parser("load-sample").set_defaults(func=cmd_load_sample)
+    sub.add_parser("ensure-sample").set_defaults(func=cmd_ensure_sample)
 
     sp = sub.add_parser("ingest"); sp.add_argument("--once", action="store_true"); sp.add_argument("--no-comments", action="store_true"); sp.set_defaults(func=cmd_ingest)
     sub.add_parser("refresh").set_defaults(func=cmd_refresh)
