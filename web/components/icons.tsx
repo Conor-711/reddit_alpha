@@ -25,3 +25,10 @@ export const IconDownvote = ({ className = "w-5 h-5" }: P) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor"><path d="M12 20.4L3.8 11.2H9V3.6h6v7.6h5.2z" /></svg>
 );
 export const IconComment = (p: P) => <S {...p}><path d="M21 11.5a8 8 0 0 1-11.7 7.1L4 20l1.4-5.1A8 8 0 1 1 21 11.5z" /></S>;
+// 品牌波浪（呼应 logo 的橙色波纹）
+export const IconWaves = ({ className = "w-6 h-4" }: P) => (
+  <svg viewBox="0 0 34 16" className={className} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+    <path d="M2 4.5c4-4 7.5 4 11.5 0s7.5-4 11.5 0 5.5 2 7 1" />
+    <path d="M2 11.5c4-4 7.5 4 11.5 0s7.5-4 11.5 0 5.5 2 7 1" />
+  </svg>
+);

@@ -3,7 +3,8 @@ import { getMeta } from "@/lib/queries";
 import { timeAgo } from "@/lib/format";
 import { SearchBox } from "./SearchBox";
 import { MobileNav } from "./MobileNav";
-import { IconPulse } from "./icons";
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export function Topbar() {
   const meta = getMeta();
@@ -11,11 +12,12 @@ export function Topbar() {
     <header className="sticky top-0 z-30 border-b border-line bg-surface/70 backdrop-blur">
       <div className="flex items-center justify-between gap-3 h-16 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="lg:hidden flex items-center gap-2">
-          <span className="grid place-items-center w-7 h-7 rounded-full bg-reddit text-white">
-            <IconPulse className="w-4 h-4" />
+          <span className="w-7 h-7 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${BASE}/logo.png`} alt="redditalpha logo" className="w-full h-full object-contain" />
           </span>
           <span className="font-display font-extrabold text-cream">
-            Reddit<span className="text-amber">Alpha</span>
+            reddit<span className="text-reddit">alpha</span>
           </span>
         </Link>
 

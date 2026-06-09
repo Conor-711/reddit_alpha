@@ -5,7 +5,7 @@ import ReactECharts from "echarts-for-react";
 export function Sparkline({
   series,
   height = 70,
-  color = "#FF4500",
+  color = "#FC3E02",
 }: {
   series: { ts: string; mentions: number; sentiment: number }[];
   height?: number;
@@ -32,7 +32,7 @@ export function Sparkline({
         symbol: "none",
         data: y,
         lineStyle: { color, width: 2 },
-        areaStyle: { color: "rgba(247,147,26,0.12)" },
+        areaStyle: { color: "rgba(252,62,2,0.14)" },
       },
     ],
   };

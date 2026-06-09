@@ -4,7 +4,7 @@ import { MindshareTreemap } from "@/components/charts/MindshareTreemap";
 import { MoodGauge } from "@/components/charts/MoodGauge";
 import { FeedCard } from "@/components/FeedCard";
 import { NarrativeCard } from "@/components/NarrativeCard";
-import { IconFlame } from "@/components/icons";
+import { IconFlame, IconWaves } from "@/components/icons";
 import { fmtInt, fmtCompact, sentTextClass } from "@/lib/format";
 import {
   getMarketMood, getMindshare, getTreemap, getTrending, getNarratives, getFeed, getMeta,
@@ -25,8 +25,11 @@ export default function Overview() {
       {/* 标题 */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Eyebrow>实时舆情看板</Eyebrow>
-          <h1 className="mt-1 font-display font-extrabold text-cream text-2xl tracking-tight">
+          <div className="flex items-center gap-2">
+            <IconWaves className="w-6 h-4 text-reddit" />
+            <Eyebrow>实时舆情看板</Eyebrow>
+          </div>
+          <h1 className="mt-1.5 font-display font-extrabold text-cream text-2xl tracking-tight">
             Reddit 在热议什么
           </h1>
         </div>

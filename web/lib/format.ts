@@ -59,7 +59,7 @@ export function moodColor(score: number): string {
 export const REDDIT = "https://www.reddit.com";
 
 // subreddit 小圆标配色（按名字确定性取色）
-const SUB_PALETTE = ["#FF4500", "#0079D3", "#24B47E", "#E6B450", "#7193FF", "#F0556E", "#46D160", "#FF8717"];
+const SUB_PALETTE = ["#FC3E02", "#0079D3", "#24B47E", "#E6B450", "#7193FF", "#F0556E", "#46D160", "#FF8717"];
 export function subColor(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;

@@ -1,19 +1,21 @@
 import Link from "next/link";
 import { NavLinks } from "./NavLinks";
-import { IconPulse } from "./icons";
 import { getCommunities } from "@/lib/queries";
 import { fmtCompact, subColor } from "@/lib/format";
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export function Sidebar() {
   const communities = getCommunities();
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 w-[232px] flex-col border-r border-line bg-surface/60 backdrop-blur z-40">
       <Link href="/" className="flex items-center gap-2.5 px-5 h-16 border-b border-line shrink-0">
-        <span className="grid place-items-center w-8 h-8 rounded-full bg-reddit text-white">
-          <IconPulse className="w-5 h-5" />
+        <span className="w-9 h-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${BASE}/logo.png`} alt="RedditAlpha logo" className="w-full h-full object-contain" />
         </span>
         <span className="font-display font-extrabold text-cream text-[17px] tracking-tight">
-          Reddit<span className="text-reddit">Alpha</span>
+          reddit<span className="text-reddit">alpha</span>
         </span>
       </Link>
 

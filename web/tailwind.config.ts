@@ -8,14 +8,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#0C0C0E",
-        surface: "#141317",
-        card: "#18171C",
-        elevated: "#1E1D23",
-        line: "#2A2930",
-        reddit: "#FF4500", // Reddit 橙 = 品牌主色 / upvote / 热度
-        amber: "#FF4500", // 复用为 Reddit 橙（沿用既有 amber 类名）
-        downvote: "#7193FF", // Reddit downvote 蓝紫
+        // 取自 logo：深藏青底 + 橙波浪
+        ink: "#0C161E", // 页面底色（比 logo 的 A 更深）
+        surface: "#11202A", // 导航 / 顶栏
+        card: "#16242F", // 卡片
+        elevated: "#1C2E3A",
+        line: "#243845", // 藏青描边
+        navy: "#13212C", // logo 的「A」色
+        reddit: "#FC3E02", // logo 橙 = 品牌主色 / upvote / 热度 / CTA
+        amber: "#FC3E02", // 沿用既有 amber 类名 = logo 橙
+        downvote: "#7193FF",
         bull: "#24B47E", // 看多 / 上涨
         bear: "#F0556E", // 看空 / 下跌
         gold: "#E6B450", // 奖章 / 高信号

@@ -1,4 +1,13 @@
-# Reddit 版 Kaito Pro · Reddit 美股舆情情报 Dashboard
+<div align="center">
+  <img src="web/public/logo.png" alt="redditalpha" width="96" />
+  <h1>redditalpha</h1>
+  <p>Reddit 美股舆情情报 Dashboard</p>
+</div>
+
+> **品牌 / 命名（正式确定）**
+> - **名称**：`redditalpha`（小写 wordmark，呼应 Reddit 自身的小写风格）。即原“Reddit 版 Kaito Pro”。
+> - **Logo**：深藏青字母「A」+ 橙色波浪（波浪 = 舆情信号）。文件 `web/public/logo.png`，并作为站点 favicon（`web/app/icon.png`）。
+> - **主题色（取自 logo）**：品牌橙 `#FC3E02`（主色 / CTA / 热度 / upvote）、藏青 `#13212C`（界面底色家族），辅以 bull 绿 `#24B47E` / bear 红 `#F0556E` 作多空语义色。
 
 把 [Kaito Pro](https://pro.kaito.ai/portal) 的「注意力份额(mindshare) + 叙事 + 情绪 + KOL 榜」打法，从 Twitter/crypto 迁到 **Reddit / 美股**。以专业方式分析 Reddit 财经板块的帖子数据，输出**真实数据 + 多角度 AI 结论**。
 

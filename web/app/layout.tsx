@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 
 export const metadata: Metadata = {
-  title: "RedditAlpha · Reddit 美股舆情情报",
+  title: "redditalpha · Reddit 美股舆情情报",
   description: "以专业方式分析 Reddit 财经板块的帖子数据：声量份额、情绪、异动、AI 叙事与每日简报。",
 };
 
