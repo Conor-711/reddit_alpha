@@ -1,0 +1,59 @@
+import { SentPill, TickerChip, ThemeTag, SubredditChip, Avatar } from "./ui";
+import { IconUpvote, IconDownvote, IconComment } from "./icons";
+import { timeAgo, fmtCompact, REDDIT } from "@/lib/format";
+import type { FeedRow } from "@/lib/queries";
+
+export function FeedCard({ p }: { p: FeedRow }) {
+  return (
+    <div className="panel rounded-2xl panel-hover flex overflow-hidden">
+      {/* 投票轨（Reddit 招牌） */}
+      <div className="flex flex-col items-center gap-0.5 py-3 w-11 shrink-0 bg-white/[.015]">
+        <IconUpvote className="w-[18px] h-[18px] text-reddit" />
+        <span className="font-mono font-bold text-[13px] text-reddit tabular leading-none">{fmtCompact(p.score)}</span>
+        <IconDownvote className="w-[18px] h-[18px] text-neutral-600" />
+      </div>
+
+      {/* 内容 */}
+      <div className="min-w-0 flex-1 p-3.5 pl-3">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-neutral-500">
+          <SubredditChip name={p.subreddit} />
+          {p.author && (
+            <span className="inline-flex items-center gap-1 truncate">
+              · <Avatar name={p.author} size={15} /> u/{p.author}
+            </span>
+          )}
+          <span>· {timeAgo(p.created)}</span>
+          {p.flair && (
+            <span className="px-1.5 py-0.5 rounded-full bg-white/[.06] text-neutral-400 text-[10px] font-medium">{p.flair}</span>
+          )}
+        </div>
+
+        <a
+          href={`${REDDIT}${p.permalink}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 block font-medium text-cream hover:text-reddit transition leading-snug"
+        >
+          {p.title}
+        </a>
+
+        {p.tldr && <p className="mt-1.5 text-sm text-neutral-400 leading-relaxed line-clamp-2">{p.tldr}</p>}
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <span className="inline-flex items-center gap-1 text-xs text-neutral-500 font-medium">
+            <IconComment className="w-3.5 h-3.5" /> {fmtCompact(p.comments)}
+          </span>
+          <SentPill stance={p.stance} />
+          {p.quality >= 0.7 && <span className="text-[11px] text-gold font-medium">★ 高信号</span>}
+          {(p.tickers.length > 0 || p.themes.length > 0) && <span className="w-px h-3.5 bg-line mx-0.5" />}
+          {p.tickers.slice(0, 5).map((t) => (
+            <TickerChip key={t.ticker} ticker={t.ticker} size="xs" />
+          ))}
+          {p.themes.slice(0, 2).map((t) => (
+            <ThemeTag key={t}>{t}</ThemeTag>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

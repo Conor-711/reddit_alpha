@@ -1,0 +1,19 @@
+# v1 订阅的财经板块。
+# weight：信号质量权重，用于加权声量/作者影响力（高质量板块给更高权重，WSB 噪音多略低）。
+subreddits:
+  - name: wallstreetbets
+    weight: 0.8
+  - name: stocks
+    weight: 1.0
+  - name: investing
+    weight: 1.0
+  - name: StockMarket
+    weight: 0.9
+  - name: options
+    weight: 0.9
+  - name: ValueInvesting
+    weight: 1.2
+  - name: SecurityAnalysis
+    weight: 1.3
+  - name: thetagang
+    weight: 1.0

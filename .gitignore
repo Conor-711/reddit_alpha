@@ -1,0 +1,28 @@
+# Python
+pipeline/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Env / secrets
+.env
+web/.env
+*.local
+
+# Data / DB（仅忽略根目录 data/ 下的运行期库，pipeline/data 字典样本照常入库）
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/sec_company_tickers.json
+*.sqlite3
+
+# Node / Next
+web/node_modules/
+web/.next/
+web/out/
+web/prisma/dev.db
+
+# OS / editor
+.DS_Store
+*.log
+/tmp/
