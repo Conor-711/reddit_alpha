@@ -38,5 +38,5 @@ RUN cd web && npm run build
 
 ENV PORT=8080
 EXPOSE 8080
-# Railway 注入 $PORT；用 python 静态服务托管 web/out
-CMD ["sh", "-c", "python3 -m http.server ${PORT:-8080} --directory web/out --bind 0.0.0.0"]
+# 用 Node 静态服务托管 web/out（原生读 process.env.PORT，不依赖 shell 展开）
+CMD ["node", "server.mjs"]
