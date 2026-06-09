@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { LocaleLink } from "@/components/i18n/LocaleLink";
+import { useLocale } from "@/components/i18n/LocaleProvider";
+import { withLang, type Locale, type Dictionary } from "@/lib/i18n";
 import {
   INTENTS,
   EXPERIENCES,
-  sectorLabel,
   sectorEmoji,
   saveOnboarding,
   type Intent,
@@ -18,8 +19,13 @@ const TOTAL = 4;
 
 type Sector = { key: string; count: number };
 type Ticker = { ticker: string; name: string; sector: string | null };
+type OB = Dictionary["onboarding"];
+
+const secLabelOf = (t: OB, key: string) => (t.sectors as Record<string, string>)[key] ?? key;
 
 export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; tickers: Ticker[] }) {
+  const { lang, dict } = useLocale();
+  const t = dict.onboarding;
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [intent, setIntent] = useState<Intent | null>(null);
@@ -69,13 +75,13 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
                 ))}
               </div>
               <span className="text-[12px] text-neutral-500 tabular">
-                第 {step} / {TOTAL} 步
+                {t.stepPre}{step}{t.stepMid}{TOTAL}{t.stepPost}
               </span>
             </div>
           )}
-          <Link href="/" className="text-[13px] text-neutral-500 hover:text-cream transition">
-            退出
-          </Link>
+          <LocaleLink href="/" className="text-[13px] text-neutral-500 hover:text-cream transition">
+            {t.exit}
+          </LocaleLink>
         </header>
 
         {/* 内容 */}
@@ -86,20 +92,20 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
                 onClick={() => setStep(step - 1)}
                 className="mb-5 inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-cream transition"
               >
-                ← 上一步
+                {t.prev}
               </button>
             )}
 
             {step === 1 && (
-              <Step eyebrow="你来 redditalpha 想做什么" title="先告诉我们你的目标">
+              <Step eyebrow={t.step1Eyebrow} title={t.step1Title}>
                 <div className="grid sm:grid-cols-3 gap-3.5">
                   {INTENTS.map((o) => (
                     <OptionCard
                       key={o.id}
                       emoji={o.emoji}
-                      tagline={o.tagline}
-                      label={o.label}
-                      desc={o.desc}
+                      tagline={t.intents[o.id].tagline}
+                      label={t.intents[o.id].label}
+                      desc={t.intents[o.id].desc}
                       selected={intent === o.id}
                       onClick={() => {
                         setIntent(o.id);
@@ -112,14 +118,14 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
             )}
 
             {step === 2 && (
-              <Step eyebrow="你的投资经验" title="你处在哪个阶段">
+              <Step eyebrow={t.step2Eyebrow} title={t.step2Title}>
                 <div className="grid sm:grid-cols-3 gap-3.5">
                   {EXPERIENCES.map((o) => (
                     <OptionCard
                       key={o.id}
                       emoji={o.emoji}
-                      label={o.label}
-                      desc={o.desc}
+                      label={t.experiences[o.id].label}
+                      desc={t.experiences[o.id].desc}
                       selected={experience === o.id}
                       onClick={() => {
                         setExperience(o.id);
@@ -133,19 +139,15 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
 
             {step === 3 && (
               <Step
-                eyebrow="个性化"
+                eyebrow={t.step3Eyebrow}
                 title={
-                  intent === "find"
-                    ? "你想投资哪些领域"
-                    : intent === "manage"
-                    ? "你手里有哪些股票"
-                    : "定制你的两个模块"
+                  intent === "find" ? t.step3TitleFind : intent === "manage" ? t.step3TitleManage : t.step3TitleBoth
                 }
-                subtitle="可多选，之后随时能改。"
+                subtitle={t.step3Subtitle}
               >
                 <div className="space-y-7">
                   {(intent === "find" || intent === "both") && (
-                    <Module title="想投资的领域" hint={`${sectors.length} 个领域有讨论`}>
+                    <Module title={t.moduleSectorsTitle} hint={`${sectors.length}${t.moduleSectorsHintPost}`}>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                         {sectors.map((s) => (
                           <SelectTile
@@ -153,8 +155,8 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
                             selected={selSectors.includes(s.key)}
                             onClick={() => toggle(selSectors, setSelSectors, s.key)}
                             emoji={sectorEmoji(s.key)}
-                            title={sectorLabel(s.key)}
-                            sub={`${s.count} 个标的`}
+                            title={secLabelOf(t, s.key)}
+                            sub={`${s.count}${t.tickerCountPost}`}
                           />
                         ))}
                       </div>
@@ -162,16 +164,16 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
                   )}
 
                   {(intent === "manage" || intent === "both") && (
-                    <Module title="你的持仓" hint="选择你持有/关注的标的">
+                    <Module title={t.moduleTickersTitle} hint={t.moduleTickersHint}>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-[42vh] overflow-y-auto pr-1">
-                        {tickers.map((t) => (
+                        {tickers.map((tk) => (
                           <SelectTile
-                            key={t.ticker}
-                            selected={selTickers.includes(t.ticker)}
-                            onClick={() => toggle(selTickers, setSelTickers, t.ticker)}
-                            mono={t.ticker}
-                            title={t.name || t.ticker}
-                            sub={t.sector ? sectorLabel(t.sector) : undefined}
+                            key={tk.ticker}
+                            selected={selTickers.includes(tk.ticker)}
+                            onClick={() => toggle(selTickers, setSelTickers, tk.ticker)}
+                            mono={tk.ticker}
+                            title={tk.name || tk.ticker}
+                            sub={tk.sector ? secLabelOf(t, tk.sector) : undefined}
                           />
                         ))}
                       </div>
@@ -181,10 +183,10 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
 
                 <div className="mt-8 flex items-center justify-between gap-4">
                   <span className="text-[13px] text-neutral-500">
-                    已选
-                    {intent !== "manage" && ` ${selSectors.length} 个领域`}
+                    {t.selected}
+                    {intent !== "manage" && ` ${selSectors.length}${t.sectorsUnit}`}
                     {intent === "both" && " ·"}
-                    {intent !== "find" && ` ${selTickers.length} 个标的`}
+                    {intent !== "find" && ` ${selTickers.length}${t.tickersUnit}`}
                   </span>
                   <button
                     disabled={!canContinue}
@@ -192,7 +194,7 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
                     className="inline-flex items-center gap-2 rounded-xl px-6 py-3 font-display font-bold text-white shadow-lg shadow-reddit/25 hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
                     style={{ backgroundImage: "var(--grad-brand)" }}
                   >
-                    生成我的专属看板 →
+                    {t.generateBtn}
                   </button>
                 </div>
               </Step>
@@ -200,10 +202,12 @@ export function OnboardingFlow({ sectors, tickers }: { sectors: Sector[]; ticker
 
             {step === 4 && (
               <GeneratingStep
+                t={t}
+                joiner={lang === "zh" ? "、" : ", "}
                 intent={intent}
                 sectorKeys={selSectors}
                 tickerSyms={selTickers}
-                onDone={() => router.push("/dashboard")}
+                onDone={() => router.push(withLang(lang, "/dashboard"))}
               />
             )}
           </div>
@@ -319,34 +323,38 @@ function SelectTile({
 }
 
 function GeneratingStep({
+  t,
+  joiner,
   intent,
   sectorKeys,
   tickerSyms,
   onDone,
 }: {
+  t: OB;
+  joiner: string;
   intent: Intent | null;
   sectorKeys: string[];
   tickerSyms: string[];
   onDone: () => void;
 }) {
-  const lines: string[] = ["读取 8 大社区近 24 小时的实时舆情"];
+  const lines: string[] = [t.genRead];
   if (intent !== "manage" && sectorKeys.length)
-    lines.push(`匹配你关注的领域：${sectorKeys.map(sectorLabel).join("、")}`);
+    lines.push(`${t.genMatchPre}${sectorKeys.map((k) => secLabelOf(t, k)).join(joiner)}`);
   if (intent !== "find" && tickerSyms.length)
-    lines.push(`拉取你持仓的讨论与多空论点：${tickerSyms.join("、")}`);
-  lines.push("计算声量份额(mindshare)与市场情绪");
-  lines.push("组装你的专属看板");
+    lines.push(`${t.genPullPre}${tickerSyms.join(joiner)}`);
+  lines.push(t.genMindshare);
+  lines.push(t.genAssemble);
 
   const [stage, setStage] = useState(0);
 
   useEffect(() => {
     if (stage >= lines.length) {
       saveOnboarding({ completedAt: Date.now() });
-      const t = setTimeout(onDone, 800);
-      return () => clearTimeout(t);
+      const tm = setTimeout(onDone, 800);
+      return () => clearTimeout(tm);
     }
-    const t = setTimeout(() => setStage((s) => s + 1), 760);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setStage((s) => s + 1), 760);
+    return () => clearTimeout(tm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
@@ -382,7 +390,7 @@ function GeneratingStep({
       </div>
 
       <h1 className="mt-7 font-display font-extrabold text-cream text-2xl tracking-tight">
-        {done ? "你的专属看板已就绪" : "正在生成你的专属情报…"}
+        {done ? t.genTitleDone : t.genTitleActive}
       </h1>
 
       <ul className="mt-6 w-full max-w-md mx-auto space-y-2.5 text-left">
@@ -404,7 +412,7 @@ function GeneratingStep({
                     : "bg-white/5 text-neutral-600"
                 }`}
               >
-                {state === "done" ? "✓" : state === "active" ? "•" : "•"}
+                {state === "done" ? "✓" : "•"}
               </span>
               <span className={state === "done" ? "text-neutral-300" : "text-neutral-400"}>{l}</span>
             </li>

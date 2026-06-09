@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 
-// 防闪烁：首屏渲染前按 localStorage 套用主题类（默认白天；夜间 = html.dark）。
-const THEME_INIT = `try{var t=localStorage.getItem('redditalpha:theme');var d=document.documentElement;if(t==='dark'){d.classList.add('dark')}else{d.classList.remove('dark')}}catch(e){}`;
+// 防闪烁：首屏渲染前按 localStorage 套用主题类 + 侧边栏折叠状态（默认白天 / 展开）。
+const THEME_INIT = `try{var d=document.documentElement;var t=localStorage.getItem('redditalpha:theme');if(t==='dark'){d.classList.add('dark')}else{d.classList.remove('dark')}var sb=localStorage.getItem('redditalpha:sidebar');if(sb){d.setAttribute('data-sb',sb)}}catch(e){}`;
 
 export const metadata: Metadata = {
   title: "redditalpha · Reddit 美股舆情情报",

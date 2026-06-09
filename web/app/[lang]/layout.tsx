@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { TickerTape } from "@/components/TickerTape";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BookmarkHint } from "@/components/BookmarkHint";
 import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { getDictionary, locales, defaultLocale, isLocale, type Locale } from "@/lib/i18n";
 
@@ -28,12 +29,13 @@ export default function LangLayout({
   return (
     <LocaleProvider lang={lang} dict={dict}>
       <Sidebar lang={lang} dict={dict} />
-      <div className="lg:pl-[232px]">
+      <div className="app-main lg:pl-[232px]">
         <Topbar lang={lang} dict={dict} />
         <TickerTape />
         <main className="px-4 sm:px-6 lg:px-8 py-5 max-w-[1480px] mx-auto">{children}</main>
       </div>
       <ThemeToggle />
+      <BookmarkHint />
     </LocaleProvider>
   );
 }

@@ -9,7 +9,8 @@ import { timeAgo, fmtCompact } from "@/lib/format";
 import type { CommentRow } from "@/lib/queries";
 
 // 把扁平评论（按分数降序）组装成 1~3 层讨论树：parent t3_=顶层(回帖)，t1_=回复某条评论。
-export function Comments({ comments }: { comments: CommentRow[] }) {
+// showZh=true 时，若该评论有中文译文(body_zh)则渲染中文。
+export function Comments({ comments, showZh = false }: { comments: CommentRow[]; showZh?: boolean }) {
   const { dict } = useLocale();
   if (!comments.length) {
     return (
@@ -39,16 +40,27 @@ export function Comments({ comments }: { comments: CommentRow[] }) {
   return (
     <div className="space-y-3">
       {roots.map((c) => (
-        <CommentNode key={c.id} c={c} tree={tree} depth={0} />
+        <CommentNode key={c.id} c={c} tree={tree} depth={0} showZh={showZh} />
       ))}
     </div>
   );
 }
 
-function CommentNode({ c, tree, depth }: { c: CommentRow; tree: Map<string, CommentRow[]>; depth: number }) {
+function CommentNode({
+  c,
+  tree,
+  depth,
+  showZh,
+}: {
+  c: CommentRow;
+  tree: Map<string, CommentRow[]>;
+  depth: number;
+  showZh: boolean;
+}) {
   const { lang, dict } = useLocale();
   const kids = tree.get(c.id) ?? [];
   const top = c.score >= 50;
+  const body = showZh && c.body_zh ? c.body_zh : c.body;
   return (
     <div>
       <div className={`rounded-xl bg-white/[.02] ring-1 ring-inset p-3.5 ${top ? "ring-reddit/25" : "ring-white/[.06]"}`}>
@@ -62,13 +74,13 @@ function CommentNode({ c, tree, depth }: { c: CommentRow; tree: Map<string, Comm
           {top && <span className="text-[10px] font-bold metal-text m-gold">{dict.comments.topBadge}</span>}
         </div>
         <div className="mt-1">
-          <MarkdownLite md={c.body} />
+          <MarkdownLite md={body} />
         </div>
       </div>
       {kids.length > 0 && depth < 3 && (
         <div className="mt-3 ml-3 sm:ml-5 pl-3 border-l border-line space-y-3">
           {kids.map((k) => (
-            <CommentNode key={k.id} c={k} tree={tree} depth={depth + 1} />
+            <CommentNode key={k.id} c={k} tree={tree} depth={depth + 1} showZh={showZh} />
           ))}
         </div>
       )}

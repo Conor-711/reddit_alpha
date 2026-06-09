@@ -47,11 +47,19 @@
   --metal-inner: #ffffff;
   --sb-thumb: #c9ccd2;
   --sb-thumb-hover: #b4b8c0;
-  --canvas-bg: #f7f8f9;
+  --canvas-bg: #f4f5f7;
+  /* 多层「蓝图纸」画布：角落品牌光晕(暖橙/冷蓝) + 顶部纸面柔光 + 细方格 */
   --canvas-image:
-    radial-gradient(60% 50% at 6% -5%, rgba(255, 69, 0, 0.05), transparent 60%),
-    radial-gradient(55% 50% at 104% 105%, rgba(70, 100, 160, 0.05), transparent 60%),
-    radial-gradient(rgba(20, 20, 45, 0.045) 1px, transparent 1px);
+    radial-gradient(46% 42% at -2% -4%, rgba(255, 69, 0, 0.08), transparent 60%),
+    radial-gradient(44% 44% at 102% 104%, rgba(52, 90, 158, 0.07), transparent 62%),
+    radial-gradient(96% 52% at 50% -24%, rgba(255, 255, 255, 0.75), transparent 72%),
+    linear-gradient(0deg, rgba(28, 30, 56, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 30, 56, 0.03) 1px, transparent 1px);
+  --canvas-size: auto, auto, auto, 76px 76px, 76px 76px;
+
+  /* 胶片颗粒（灰度噪声，两套主题共用，靠 overlay 混合出纹理） */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain-opacity: 0.05;
 }
 
 /* ===================== 夜间模式：Reddit 暗色 ===================== */
@@ -92,15 +100,18 @@ html.dark {
   --sb-thumb-hover: #3e3e44;
   --canvas-bg: #09090b;
   --canvas-image:
-    radial-gradient(60% 50% at 6% -5%, rgba(255, 69, 0, 0.06), transparent 60%),
-    radial-gradient(55% 50% at 104% 105%, rgba(120, 130, 170, 0.04), transparent 60%),
-    radial-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    radial-gradient(48% 44% at -2% -4%, rgba(255, 69, 0, 0.10), transparent 60%),
+    radial-gradient(46% 46% at 102% 104%, rgba(96, 122, 184, 0.08), transparent 62%),
+    radial-gradient(96% 52% at 50% -24%, rgba(255, 255, 255, 0.04), transparent 72%),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  --grain-opacity: 0.07;
 }
 
 body {
   background-color: var(--canvas-bg);
   background-image: var(--canvas-image);
-  background-size: auto, auto, 22px 22px;
+  background-size: var(--canvas-size);
   background-attachment: fixed;
 }
 
@@ -108,7 +119,28 @@ body {
 .theme-canvas {
   background-color: var(--canvas-bg);
   background-image: var(--canvas-image);
-  background-size: auto, auto, 22px 22px;
+  background-size: var(--canvas-size);
+}
+
+/* 胶片颗粒纹理层：固定铺满、置于内容之后，营造「纸面/匠心」质感 */
+body::before,
+.theme-canvas::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--grain);
+  background-size: 150px 150px;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: overlay;
+}
+.theme-canvas::before {
+  z-index: 0;
+}
+.theme-canvas > * {
+  position: relative;
+  z-index: 1;
 }
 
 ::selection {
@@ -254,3 +286,31 @@ html.dark .ring-white\/10 { --tw-ring-color: rgb(255 255 255 / 0.1); }
 html.dark .ring-white\/15 { --tw-ring-color: rgb(255 255 255 / 0.15); }
 html.dark .hover\:ring-white\/20:hover { --tw-ring-color: rgb(255 255 255 / 0.2); }
 html.dark .border-white\/\[\.05\] { border-color: rgb(255 255 255 / 0.05); }
+
+/* ===================== 侧边栏折叠 / 展开 ===================== */
+@media (min-width: 1024px) {
+  .app-sidebar { transition: transform 0.25s ease; }
+  .app-main { transition: padding-left 0.25s ease; }
+  html[data-sb="collapsed"] .app-sidebar { transform: translateX(-100%); }
+  html[data-sb="collapsed"] .app-main { padding-left: 0; }
+}
+
+/* ===================== 帖子/评论正文排版（阅读优化） ===================== */
+.prose-post { color: rgb(var(--n-200)); }
+.prose-post > :first-child { margin-top: 0; }
+.prose-post p { margin: 0.9em 0; line-height: 1.78; }
+.prose-post .lead { font-size: 1.12em; line-height: 1.7; color: var(--c-cream); font-weight: 500; }
+.prose-post strong { color: var(--c-cream); font-weight: 700; }
+.prose-post em { color: rgb(var(--n-300)); }
+.prose-post h1, .prose-post h2, .prose-post h3 { color: var(--c-cream); font-family: var(--font-sora); letter-spacing: -0.01em; }
+.prose-post h2 { font-size: 1.32em; font-weight: 800; margin: 1.5em 0 0.55em; padding-bottom: 0.3em; border-bottom: 1px solid rgb(var(--c-line)); }
+.prose-post h3 { font-size: 1.12em; font-weight: 700; margin: 1.25em 0 0.4em; }
+.prose-post blockquote { margin: 1.1em 0; padding: 0.2em 0 0.2em 1em; border-left: 3px solid rgb(255 69 0 / 0.5); color: rgb(var(--n-400)); font-style: italic; }
+.prose-post ul, .prose-post ol { margin: 0.9em 0; }
+.prose-post li { margin: 0.4em 0; line-height: 1.7; }
+.prose-post hr { margin: 1.5em 0; border: 0; border-top: 1px solid rgb(var(--c-line)); }
+.prose-post .callout {
+  margin: 1.2em 0; padding: 0.85em 1em; border-radius: 12px;
+  background: rgb(255 69 0 / 0.06); box-shadow: inset 0 0 0 1px rgb(255 69 0 / 0.22);
+}
+.prose-post .callout .callout-k { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #ff4500; }

@@ -93,6 +93,12 @@ def cmd_brief(args):
     run_brief(mock=args.mock)
 
 
+def cmd_daily(args):
+    """每日一次：分析过去 24 小时（UTC+8 08:00 跑）。--rebuild 同时重建静态站点。"""
+    from .daily import run_daily
+    run_daily(rebuild=args.rebuild)
+
+
 def cmd_stats(args):
     from sqlalchemy import func, select
     from .common.db import session_scope
@@ -155,6 +161,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("trending").set_defaults(func=cmd_trending)
     sp = sub.add_parser("narratives"); sp.add_argument("--mock", action="store_true"); sp.set_defaults(func=cmd_narratives)
     sp = sub.add_parser("brief"); sp.add_argument("--mock", action="store_true"); sp.set_defaults(func=cmd_brief)
+    sp = sub.add_parser("daily"); sp.add_argument("--rebuild", action="store_true"); sp.set_defaults(func=cmd_daily)
     sub.add_parser("stats").set_defaults(func=cmd_stats)
     return p
 

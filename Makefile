@@ -3,7 +3,7 @@ PIP := pipeline/.venv/bin/pip
 MANAGE := $(PY) -m pipeline.manage
 
 .PHONY: install venv db-init seed sample ingest refresh extract analyze analyze-mock \
-        rollup narratives brief worker demo stats test web-install web-dev clean help
+        rollup narratives brief worker daily daily-build demo stats test web-install web-dev clean help
 
 help:
 	@echo "Reddit 版 Kaito Pro — 常用命令"
@@ -16,7 +16,9 @@ help:
 	@echo "  make analyze       用 Claude 逐帖打标"
 	@echo "  make rollup        计算 mindshare / 情绪 / 异动"
 	@echo "  make narratives    AI 叙事聚类     make brief  每日 AI 简报"
-	@echo "  make worker        启动 APScheduler 调度全部 job"
+	@echo "  make daily         分析过去 24 小时（一天一次；UTC+8 08:00 跑）"
+	@echo "  make daily-build   分析过去 24h 并重建静态站点（web/out）"
+	@echo "  make worker        启动调度：每天 UTC+8 08:00 自动跑 daily-build"
 	@echo "  --- Web ---"
 	@echo "  make web-install   安装前端依赖    make web-dev  启动 Next.js"
 
@@ -51,6 +53,16 @@ extract:
 scrape:
 	$(MANAGE) scrape --days 3 --limit 300
 
+# ---------- 每日一次（不再实时；以 UTC+8 24h 为界，08:00 跑一次）----------
+# 分析过去 24 小时：拉取 1 天的帖子/评论 + AI 打标 + 聚合。需要真实 Claude 则设 ANTHROPIC_API_KEY。
+daily:
+	$(MANAGE) daily
+
+# 同上，并重建静态站点（web/out），让部署页面反映最新一天
+daily-build:
+	$(MANAGE) daily --rebuild
+	@echo "" && echo "✅ 每日分析 + 站点重建完成。本地部署见 make serve 或 server.mjs"
+
 # 真实数据全流程（Arctic Shift 实时 Reddit 数据 + mock AI；真实 Claude 需 ANTHROPIC_API_KEY）
 real:
 	rm -f data/dev.db data/dev.db-wal data/dev.db-shm
@@ -82,6 +94,18 @@ narratives:
 
 brief:
 	$(MANAGE) brief
+
+# 把帖子/AI 摘要/评论翻译成中文 → *_zh 列（增量、幂等，需 ANTHROPIC_API_KEY）。
+translate:
+	$(PY) -m pipeline.analyze.translate
+
+# 仅给 demo 数据灌入一批中文译文（无需 API key，用于演示「看广告解锁翻译」）。
+translate-demo:
+	$(PY) -m pipeline.analyze.seed_demo_zh
+
+# 让 AI 读懂帖子后重排版正文 → posts.selftext_fmt（提升可读性，需 ANTHROPIC_API_KEY）。
+format:
+	$(PY) -m pipeline.analyze.format_posts
 
 worker:
 	$(PY) -m pipeline.worker

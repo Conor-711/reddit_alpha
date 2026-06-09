@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { LocaleLink } from "@/components/i18n/LocaleLink";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { EmailAuthForm } from "@/components/auth/EmailAuthForm";
@@ -9,24 +10,26 @@ import { Divider, Alert } from "@/components/auth/parts";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function LoginPage() {
+  const { dict } = useLocale();
+  const t = dict.auth;
   const { configured } = useAuth();
   const [oauthErr, setOauthErr] = useState("");
   return (
     <AuthShell
-      title="登录 redditalpha"
-      subtitle="查看声量份额、情绪与每日 AI 简报"
+      title={t.loginTitle}
+      subtitle={t.loginSubtitle}
       footer={
         <>
-          还没有账号？
-          <Link href="/signup" className="text-reddit hover:underline font-medium ml-1">
-            注册
-          </Link>
+          {t.noAccount}
+          <LocaleLink href="/signup" className="text-reddit hover:underline font-medium ml-1">
+            {t.signupLink}
+          </LocaleLink>
         </>
       }
     >
       {!configured && (
         <div className="mb-4">
-          <Alert kind="info">账号系统尚未配置，登录暂不可用（见 SUPABASE_AUTH.md）。</Alert>
+          <Alert kind="info">{t.notConfiguredLogin}</Alert>
         </div>
       )}
       {oauthErr && (
@@ -36,7 +39,7 @@ export default function LoginPage() {
       )}
       <GoogleButton onError={setOauthErr} />
       <div className="my-4">
-        <Divider>或用邮箱登录</Divider>
+        <Divider>{t.orEmailLogin}</Divider>
       </div>
       <EmailAuthForm mode="login" />
     </AuthShell>

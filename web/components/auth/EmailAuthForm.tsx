@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { LocaleLink } from "@/components/i18n/LocaleLink";
+import { useLocale } from "@/components/i18n/LocaleProvider";
+import { withLang } from "@/lib/i18n";
 import { signInWithEmail, signUpWithEmail, friendlyError } from "@/lib/auth";
 import { Field, Alert } from "./parts";
 
 export function EmailAuthForm({ mode }: { mode: "login" | "signup" }) {
+  const { lang, dict } = useLocale();
+  const t = dict.auth;
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -22,13 +26,13 @@ export function EmailAuthForm({ mode }: { mode: "login" | "signup" }) {
     try {
       if (mode === "login") {
         await signInWithEmail(email, pw);
-        router.push("/"); // 跳转后由 AuthProvider 更新状态
+        router.push(withLang(lang, "/")); // 跳转后由 AuthProvider 更新状态
       } else {
         const data = await signUpWithEmail(email, pw);
         if (data.session) {
-          router.push("/");
+          router.push(withLang(lang, "/"));
         } else {
-          setMsg(`确认邮件已发送至 ${email}，请点击邮件中的链接完成注册。`);
+          setMsg(t.confirmSent.replace("{email}", email));
           setLoading(false);
         }
       }
@@ -42,22 +46,22 @@ export function EmailAuthForm({ mode }: { mode: "login" | "signup" }) {
     <form onSubmit={submit} className="space-y-3">
       {err && <Alert kind="error">{err}</Alert>}
       {msg && <Alert kind="success">{msg}</Alert>}
-      <Field label="邮箱" type="email" value={email} onChange={setEmail} placeholder="you@example.com" autoComplete="email" required />
+      <Field label={t.email} type="email" value={email} onChange={setEmail} placeholder="you@example.com" autoComplete="email" required />
       <Field
-        label="密码"
+        label={t.password}
         type="password"
         value={pw}
         onChange={setPw}
-        placeholder="至少 6 位"
+        placeholder={t.pwMin}
         autoComplete={mode === "login" ? "current-password" : "new-password"}
         required
         minLength={6}
       />
       {mode === "login" && (
         <div className="text-right -mt-1">
-          <Link href="/forgot-password" className="text-xs text-neutral-500 hover:text-reddit transition">
-            忘记密码？
-          </Link>
+          <LocaleLink href="/forgot-password" className="text-xs text-neutral-500 hover:text-reddit transition">
+            {t.forgot}
+          </LocaleLink>
         </div>
       )}
       <button
@@ -65,7 +69,7 @@ export function EmailAuthForm({ mode }: { mode: "login" | "signup" }) {
         disabled={loading}
         className="w-full rounded-lg bg-reddit text-white font-semibold py-2.5 hover:brightness-110 transition disabled:opacity-60"
       >
-        {loading ? "处理中…" : mode === "login" ? "登录" : "创建账号"}
+        {loading ? t.processing : mode === "login" ? t.loginBtn : t.createBtn}
       </button>
     </form>
   );

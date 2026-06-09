@@ -1,9 +1,8 @@
 "use client";
 
-// 极简 markdown 渲染 + 投资者友好排版：
-// - $TICKER 现金标 → 可点的橙色 ticker 链接（/<lang>/ticker/XXX）
-// - 金额 / 百分比 / 倍数 / 带后缀大数 → 等宽 tabular；带符号百分比按涨跌着色
-// - # ## ###、- 与 1. 列表、> 引用、**粗体**、~~删除~~、[链接]、`代码`
+// 极简 markdown 渲染 + 投资者友好排版（配合 globals.css 的 .prose-post）：
+// - 首段=lead(更大) / ## ### 标题(加粗带分隔线) / > 引用 / **粗体** / 列表 / --- 分隔线
+// - $TICKER 现金标 → 可点的橙色 ticker 链接；金额/百分比/倍数 → 等宽着色
 import { useLocale } from "./i18n/LocaleProvider";
 import { withLang, type Locale } from "@/lib/i18n";
 
@@ -11,34 +10,27 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// 用 Unicode 私用区字符做占位，保护 code/链接/ticker 不被后续数字正则误伤。
 function fmtInline(s: string, lang: Locale): string {
   let h = esc(s);
   const tokens: string[] = [];
   const stash = (html: string) => String.fromCharCode(0xe000 + tokens.push(html) - 1);
 
-  // 1) 代码段（内部不再格式化）
   h = h.replace(/`([^`]+)`/g, (_m, c) => stash(`<code class="px-1 py-0.5 rounded bg-white/8 text-amber text-[0.9em] font-mono">${c}</code>`));
-  // 2) markdown 链接
   h = h.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, (_m, t, u) => stash(`<a href="${u}" target="_blank" rel="noreferrer" class="text-amber hover:underline">${t}</a>`));
-  // 3) 粗体 / 删除线
-  h = h.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-cream font-semibold">$1</strong>');
-  h = h.replace(/~~([^~]+)~~/g, '<del class="text-neutral-500">$1</del>');
-  // 4) $TICKER 现金标 → ticker 链接（带语言前缀，占位保护）
+  h = h.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  h = h.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  h = h.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
   h = h.replace(/(^|[^\w$])\$([A-Za-z]{1,5})\b/g, (_m, pre, t) =>
     pre + stash(`<a href="${withLang(lang, `/ticker/${t.toUpperCase()}/`)}" class="font-mono font-semibold text-reddit hover:underline">$${t.toUpperCase()}</a>`));
-  // 5a) 带符号百分比 → 涨跌着色
   h = h.replace(/(^|[^\w])([+\-]\d[\d,]*(?:\.\d+)?\s?%)/g, (_m, pre, num) => {
     const cls = num.trim().startsWith("-") ? "text-bear" : "text-bull";
     return pre + `<span class="font-mono tabular font-medium ${cls}">${num}</span>`;
   });
-  // 5b) 金额 / 无符号百分比 / 倍数 / 带后缀大数 → 等宽强调
   h = h.replace(
     /(^|[^\w$])(\$\d[\d,]*(?:\.\d+)?[kKmMbB]?|\d[\d,]*(?:\.\d+)?\s?%|\d[\d,]*(?:\.\d+)?[kKmMbBxX])\b/g,
-    (_m, pre, num) => pre + `<span class="font-mono tabular text-cream">${num}</span>`
+    (_m, pre, num) => pre + `<span class="font-mono tabular text-cream font-medium">${num}</span>`
   );
 
-  // 还原占位（私用区字符 U+E000+）
   h = h.replace(/[-]/g, (m) => tokens[m.charCodeAt(0) - 0xe000] ?? m);
   return h;
 }
@@ -51,27 +43,26 @@ export function MarkdownLite({ md, size = "sm" }: { md: string; size?: "sm" | "b
   let buf: string[] = [];
   let bufType: "ul" | "ol" | null = null;
   let key = 0;
+  let firstPara = true;
 
   const fmt = (s: string) => fmtInline(s, lang);
-  const pCls = size === "base" ? "my-3 text-[15px] text-neutral-300 leading-7" : "my-2 text-sm text-neutral-300 leading-relaxed";
-  const liCls = size === "base" ? "text-[15px] text-neutral-300 leading-7" : "text-sm text-neutral-300 leading-relaxed";
 
   const flush = () => {
     if (!buf.length) return;
     if (bufType === "ol") {
       out.push(
-        <ol key={key++} className="my-2.5 pl-5 space-y-1.5 list-decimal marker:text-neutral-500">
+        <ol key={key++} className="pl-5 list-decimal marker:text-reddit/70 marker:font-semibold">
           {buf.map((l, i) => (
-            <li key={i} className={`pl-1 ${liCls}`} dangerouslySetInnerHTML={{ __html: fmt(l) }} />
+            <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: fmt(l) }} />
           ))}
         </ol>
       );
     } else {
       out.push(
-        <ul key={key++} className="my-2.5 space-y-1.5 pl-1">
+        <ul key={key++} className="pl-1">
           {buf.map((l, i) => (
-            <li key={i} className={`flex gap-2 ${liCls}`}>
-              <span className="mt-2 w-1 h-1 rounded-full bg-amber shrink-0" />
+            <li key={i} className="flex gap-2.5">
+              <span className="mt-[0.62em] w-1.5 h-1.5 rounded-full bg-reddit/70 shrink-0" />
               <span dangerouslySetInnerHTML={{ __html: fmt(l) }} />
             </li>
           ))}
@@ -84,18 +75,21 @@ export function MarkdownLite({ md, size = "sm" }: { md: string; size?: "sm" | "b
 
   for (const raw of lines) {
     const line = raw.trimEnd();
-    if (/^###\s+/.test(line)) {
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
       flush();
-      out.push(<h3 key={key++} className="font-display font-bold text-cream text-base mt-5 mb-1" dangerouslySetInnerHTML={{ __html: fmt(line.replace(/^###\s+/, "")) }} />);
+      out.push(<hr key={key++} />);
+    } else if (/^###\s+/.test(line)) {
+      flush();
+      out.push(<h3 key={key++} dangerouslySetInnerHTML={{ __html: fmt(line.replace(/^###\s+/, "")) }} />);
     } else if (/^##\s+/.test(line)) {
       flush();
-      out.push(<h2 key={key++} className="font-display font-bold text-cream text-lg mt-6 mb-2 pb-1 border-b border-line" dangerouslySetInnerHTML={{ __html: fmt(line.replace(/^##\s+/, "")) }} />);
+      out.push(<h2 key={key++} dangerouslySetInnerHTML={{ __html: fmt(line.replace(/^##\s+/, "")) }} />);
     } else if (/^#\s+/.test(line)) {
       flush();
-      out.push(<h1 key={key++} className="font-display font-extrabold text-cream text-2xl mb-2" dangerouslySetInnerHTML={{ __html: fmt(line.replace(/^#\s+/, "")) }} />);
+      out.push(<h2 key={key++} dangerouslySetInnerHTML={{ __html: fmt(line.replace(/^#\s+/, "")) }} />);
     } else if (/^>\s?/.test(line)) {
       flush();
-      out.push(<blockquote key={key++} className="my-3 pl-3 border-l-2 border-reddit/40 text-sm text-neutral-500 italic" dangerouslySetInnerHTML={{ __html: fmt(line.replace(/^>\s?/, "")) }} />);
+      out.push(<blockquote key={key++} dangerouslySetInnerHTML={{ __html: fmt(line.replace(/^>\s?/, "")) }} />);
     } else if (/^\d+\.\s+/.test(line)) {
       if (bufType !== "ol") flush();
       bufType = "ol";
@@ -108,9 +102,11 @@ export function MarkdownLite({ md, size = "sm" }: { md: string; size?: "sm" | "b
       flush();
     } else {
       flush();
-      out.push(<p key={key++} className={pCls} dangerouslySetInnerHTML={{ __html: fmt(line) }} />);
+      const cls = size === "base" && firstPara ? "lead" : undefined;
+      firstPara = false;
+      out.push(<p key={key++} className={cls} dangerouslySetInnerHTML={{ __html: fmt(line) }} />);
     }
   }
   flush();
-  return <div>{out}</div>;
+  return <div className={`prose-post ${size === "base" ? "text-[15.5px] sm:text-base" : "text-[13.5px]"}`}>{out}</div>;
 }

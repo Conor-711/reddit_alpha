@@ -1,59 +1,39 @@
-"""调度器：按节奏自动跑数据 + AI 全流程（生产用，需 .env 凭证）。
+"""调度器：每天 UTC+8 08:00 跑一次全量流程，分析「过去 24 小时」的 Reddit 信息。
 
-  ingest+refresh 每 15 分钟 · analyze+rollup+mood+trending 每 20 分钟
-  · narratives 每 2 小时 · brief 每日 00:10 UTC
+不再实时爬取——以 UTC+8 时区的 24 小时为界线，每天清晨分析一次即可。
+跑完会顺带重建静态站点（web/out），让部署页面反映最新一天的数据。
 """
 from __future__ import annotations
 
-import datetime as dt
-
 from apscheduler.schedulers.blocking import BlockingScheduler
 
-from .analyze.brief import run_brief
-from .analyze.item_analyze import run_analyze
-from .analyze.market_mood import run_market_mood
-from .analyze.narratives import run_narratives
-from .analyze.rollups import run_rollups
-from .analyze.trending import run_trending
 from .common.config import settings
 from .common.db import init_db
-from .ingest.reddit_ingest import ingest_once
-from .ingest.refresh import refresh_recent
+from .daily import run_daily
+
+TIMEZONE = "Asia/Shanghai"  # UTC+8
+HOUR, MINUTE = 8, 0
 
 
-def _safe(fn, *args, **kwargs):
+def _daily():
     try:
-        fn(*args, **kwargs)
+        run_daily(rebuild=True)
     except Exception as e:  # noqa: BLE001
-        print(f"[worker] {fn.__name__} 失败：{e}")
-
-
-def cycle_data():
-    _safe(ingest_once)
-    _safe(refresh_recent)
-
-
-def cycle_ai():
-    _safe(run_analyze)
-    _safe(run_rollups)
-    _safe(run_market_mood)
-    _safe(run_trending)
+        print(f"[worker] daily 失败：{e}")
 
 
 def main():
     init_db()
     if not settings.has_reddit:
-        print("[worker] ⚠️ 缺 Reddit 凭证，ingest 将失败——请先在 .env 配置。")
+        print("[worker] ℹ️ 无 Reddit 凭证：使用 Arctic Shift 镜像爬取真实数据。")
     if not settings.has_anthropic:
-        print("[worker] ⚠️ 缺 ANTHROPIC_API_KEY，analyze/narratives/brief 将失败。")
+        print("[worker] ⚠️ 缺 ANTHROPIC_API_KEY，AI 打标/叙事/简报将使用 mock。")
 
-    now = dt.datetime.now()
-    sched = BlockingScheduler(timezone="UTC")
-    sched.add_job(cycle_data, "interval", minutes=15, next_run_time=now)
-    sched.add_job(cycle_ai, "interval", minutes=20, next_run_time=now + dt.timedelta(seconds=30))
-    sched.add_job(lambda: _safe(run_narratives), "interval", hours=2)
-    sched.add_job(lambda: _safe(run_brief), "cron", hour=0, minute=10)
-    print("[worker] 调度启动：ingest/refresh 15m · analyze/rollup 20m · narratives 2h · brief 每日 00:10 UTC")
+    sched = BlockingScheduler(timezone=TIMEZONE)
+    sched.add_job(_daily, "cron", hour=HOUR, minute=MINUTE, id="daily")
+    print(f"[worker] 调度启动：每天 {HOUR:02d}:{MINUTE:02d} {TIMEZONE}（UTC+8）分析过去 24 小时并重建站点。")
+    print("[worker] 立即跑一次以初始化（之后按日程运行）。Ctrl+C 退出。")
+    _daily()
     try:
         sched.start()
     except (KeyboardInterrupt, SystemExit):

@@ -9,6 +9,9 @@ import type { FeedRow } from "@/lib/queries";
 
 export function FeedCard({ p }: { p: FeedRow }) {
   const { lang, dict } = useLocale();
+  const isZh = lang === "zh";
+  const title = isZh && p.title_zh ? p.title_zh : p.title;
+  const tldr = isZh && p.tldr_zh ? p.tldr_zh : p.tldr;
   return (
     <div className="panel rounded-2xl panel-hover flex overflow-hidden">
       {/* 投票轨（Reddit 招牌） */}
@@ -37,10 +40,10 @@ export function FeedCard({ p }: { p: FeedRow }) {
           href={`/post/${p.id}`}
           className="mt-1 block font-medium text-cream hover:text-reddit transition leading-snug"
         >
-          {p.title}
+          {title}
         </LocaleLink>
 
-        {p.tldr && <p className="mt-1.5 text-sm text-neutral-400 leading-relaxed line-clamp-2">{p.tldr}</p>}
+        {tldr && <p className="mt-1.5 text-sm text-neutral-400 leading-relaxed line-clamp-2">{tldr}</p>}
 
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
           <span className="inline-flex items-center gap-1 text-xs text-neutral-500 font-medium">

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import { getOnboardingData } from "@/lib/queries";
+import { getDictionary } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-  title: "redditalpha · 个性化引导",
-  description: "几步选择，让 redditalpha 为你生成专属的 Reddit 美股情报。",
-};
+export function generateMetadata({ params }: { params: { lang: string } }): Metadata {
+  const t = getDictionary(params.lang).onboarding;
+  return { title: t.metaTitle, description: t.metaDesc };
+}
 
 export default function OnboardingPage() {
   const { sectors, tickers } = getOnboardingData();

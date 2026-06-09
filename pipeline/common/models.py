@@ -79,6 +79,9 @@ class Post(Base):
     author_id: Mapped[Optional[str]] = mapped_column(String(80), ForeignKey("authors.id"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(Text, default="")
     selftext: Mapped[str] = mapped_column(Text, default="")
+    title_zh: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 中文译文（按需）
+    selftext_zh: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    selftext_fmt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # AI 重排版后的 Markdown（提升可读性）
     url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     permalink: Mapped[str] = mapped_column(Text, default="")
     flair: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
@@ -98,6 +101,7 @@ class Comment(Base):
     post_id: Mapped[str] = mapped_column(String(16), ForeignKey("posts.id"), index=True)
     author_id: Mapped[Optional[str]] = mapped_column(String(80), ForeignKey("authors.id"), nullable=True)
     body: Mapped[str] = mapped_column(Text, default="")
+    body_zh: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 中文译文（按需）
     score: Mapped[int] = mapped_column(Integer, default=0)
     created_utc: Mapped[dt.datetime] = mapped_column(DateTime, index=True)
     parent_id: Mapped[Optional[str]] = mapped_column(String(24), nullable=True)
@@ -142,8 +146,11 @@ class ItemAnalysis(Base):
     quality_score: Mapped[float] = mapped_column(Float, default=0.0)  # 0..1 干货 vs 噪音
     themes: Mapped[Optional[list]] = mapped_column(JSONText, nullable=True)
     tldr: Mapped[str] = mapped_column(Text, default="")
+    tldr_zh: Mapped[str] = mapped_column(Text, default="")  # 中文译文（按需）
     bull_points: Mapped[Optional[list]] = mapped_column(JSONText, nullable=True)
     bear_points: Mapped[Optional[list]] = mapped_column(JSONText, nullable=True)
+    bull_points_zh: Mapped[Optional[list]] = mapped_column(JSONText, nullable=True)
+    bear_points_zh: Mapped[Optional[list]] = mapped_column(JSONText, nullable=True)
     tickers: Mapped[Optional[list]] = mapped_column(JSONText, nullable=True)  # [{ticker,relevance}]
     model: Mapped[str] = mapped_column(String(48), default="")
     analyzed_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)

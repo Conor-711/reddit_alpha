@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Panel, Eyebrow, SubredditChip, Avatar, SentPill, TickerChip, ThemeTag } from "@/components/ui";
 import { MarkdownLite } from "@/components/MarkdownLite";
 import { Comments } from "@/components/Comments";
+import { TranslateGate } from "@/components/TranslateGate";
 import { IconUpvote, IconComment } from "@/components/icons";
 import { timeAgo, fmtCompact, fmtInt, REDDIT } from "@/lib/format";
 import { getPostDetail, getAllPostIds } from "@/lib/queries";
@@ -21,6 +22,12 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
   if (!d) notFound();
   const { post, analysis, comments } = d;
   const hasAI = analysis && (analysis.tldr || analysis.bull.length > 0 || analysis.bear.length > 0);
+  const isZh = lang === "zh";
+  // 标题 + AI 摘要：直接给中文（免费预览）；正文 / 评论：看广告解锁（TranslateGate）。
+  const postTitle = isZh && post.title_zh ? post.title_zh : post.title;
+  const aiTldr = isZh && analysis?.tldr_zh ? analysis.tldr_zh : analysis?.tldr ?? "";
+  const aiBull = isZh && analysis?.bull_zh.length ? analysis.bull_zh : analysis?.bull ?? [];
+  const aiBear = isZh && analysis?.bear_zh.length ? analysis.bear_zh : analysis?.bear ?? [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -52,7 +59,7 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
             </span>
           </div>
           <h1 className="mt-2 font-display font-extrabold text-cream text-[22px] sm:text-[24px] leading-snug tracking-tight">
-            {post.title}
+            {postTitle}
           </h1>
         </div>
       </Panel>
@@ -64,11 +71,11 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
             <Eyebrow color="text-reddit">{t.aiSummary}</Eyebrow>
             {analysis!.stance && <SentPill stance={analysis!.stance} />}
           </div>
-          {analysis!.tldr && <p className="mt-2 text-[15px] text-cream leading-relaxed">{analysis!.tldr}</p>}
-          {(analysis!.bull.length > 0 || analysis!.bear.length > 0) && (
+          {aiTldr && <p className="mt-2 text-[15px] text-cream leading-relaxed">{aiTldr}</p>}
+          {(aiBull.length > 0 || aiBear.length > 0) && (
             <div className="mt-3.5 grid sm:grid-cols-2 gap-x-5 gap-y-3">
-              <PointList t={t} tone="bull" items={analysis!.bull} />
-              <PointList t={t} tone="bear" items={analysis!.bear} />
+              <PointList t={t} tone="bull" items={aiBull} />
+              <PointList t={t} tone="bear" items={aiBear} />
             </div>
           )}
           {(analysis!.tickers.length > 0 || analysis!.themes.length > 0) && (
@@ -87,7 +94,11 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
       {/* 正文 */}
       {post.selftext ? (
         <Panel className="p-5 sm:p-7">
-          <MarkdownLite md={post.selftext} size="base" />
+          <TranslateGate
+            hasZh={!!post.selftext_zh}
+            original={<MarkdownLite md={post.selftext_fmt || post.selftext} size="base" />}
+            zh={<MarkdownLite md={post.selftext_zh} size="base" />}
+          />
         </Panel>
       ) : (
         <Panel className="p-5 text-sm text-neutral-500">
@@ -110,7 +121,11 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
           <div className="h-px flex-1 bg-line/70" />
           {comments.length > 0 && <span className="text-xs text-neutral-600 shrink-0">{comments.length} {t.commentsCount}</span>}
         </div>
-        <Comments comments={comments} />
+        <TranslateGate
+          hasZh={comments.some((c) => !!c.body_zh)}
+          original={<Comments comments={comments} showZh={false} />}
+          zh={<Comments comments={comments} showZh={true} />}
+        />
       </div>
 
       {/* 原帖（次要入口） */}

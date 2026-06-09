@@ -33,119 +33,107 @@ export default function Landing({ params }: { params: { lang: string } }) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto theme-canvas">
-      <div className="min-h-[100dvh] grid lg:grid-cols-[1.05fr_0.95fr]">
-        {/* ============ 左：网站价值 ============ */}
-        <aside className="hidden lg:flex flex-col justify-between p-10 xl:p-14 border-r border-line/70">
-          <div className="flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain" />
-            </span>
-            <span className="font-display font-extrabold text-cream text-[18px] tracking-tight">
-              reddit<span className="text-reddit">alpha</span>
-            </span>
+      {/* 顶部品牌 */}
+      <header className="flex items-center justify-center sm:justify-start px-6 sm:px-10 h-20 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <span className="w-9 h-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain" />
+          </span>
+          <span className="font-display font-extrabold text-cream text-[18px] tracking-tight">
+            reddit<span className="text-reddit">alpha</span>
+          </span>
+        </div>
+      </header>
+
+      {/* 全屏居中英雄区 */}
+      <main className="flex flex-col items-center text-center px-6 pb-16 pt-2 sm:pt-6">
+        <div className="w-full max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-semibold ring-1 ring-inset ring-white/10 bg-white/[.03] text-neutral-300">
+            <IconUpvote className="w-3.5 h-3.5 text-reddit" />
+            {t.badge}
           </div>
 
-          <div className="py-10 max-w-xl">
-            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-semibold ring-1 ring-inset ring-white/10 bg-white/[.03] text-neutral-300">
-              <IconUpvote className="w-3.5 h-3.5 text-reddit" />
-              {t.badge}
-            </div>
+          <h1 className="mt-6 font-display font-extrabold text-cream tracking-tight leading-[1.08] text-[clamp(34px,6vw,60px)]">
+            {t.titleLead} <span className="metal-text m-gold">{t.titleGold}</span>
+            {t.titleTail}
+          </h1>
 
-            <h1 className="mt-6 font-display font-extrabold text-cream tracking-tight leading-[1.1] text-[clamp(30px,3.4vw,46px)]">
-              {t.titleLead}
-              <br />
-              <span className="metal-text m-gold">{t.titleGold}</span>
-              {t.titleTail}
-            </h1>
-            <p className="mt-4 text-neutral-400 leading-relaxed text-[15px]">
-              {t.ledePre}
-              <span className="text-cream font-medium">{t.ledeStrong}</span>
-              {t.ledePost}
-            </p>
+          <p className="mt-5 mx-auto max-w-2xl text-neutral-400 leading-relaxed text-[15px] sm:text-[16px]">
+            {t.ledePre}
+            <span className="text-cream font-medium">{t.ledeStrong}</span>
+            {t.ledePost}
+          </p>
 
-            <ul className="mt-8 space-y-5">
-              <ProofRow
-                emoji="💎"
-                metric="$53K → $48M"
-                metricClass="metal-text m-gold"
-                text={
-                  <>
-                    {t.p1Pre}
-                    <span className="text-gold">{t.p1Quote}</span>
-                  </>
-                }
-              />
-              <ProofRow emoji="🔥" metric="$17 → $483" metricClass="text-reddit" text={t.p2} />
-              <ProofRow emoji="🧠" metric={t.p3Metric} metricClass="metal-text m-silver" text={t.p3} />
-            </ul>
+          {/* 主 CTA */}
+          <div className="mt-8 flex flex-col items-center">
+            <LocaleLink
+              href="/dashboard"
+              className="group inline-flex items-center justify-center gap-2 rounded-xl px-7 py-4 font-display font-bold text-white text-[16px] shadow-lg shadow-reddit/30 ring-1 ring-inset ring-white/15 hover:brightness-110 hover:-translate-y-0.5 transition"
+              style={{ backgroundImage: "var(--grad-brand)" }}
+            >
+              {t.enterCta}
+              <IconArrow className="w-4 h-4 transition group-hover:translate-x-0.5" />
+            </LocaleLink>
+            <p className="mt-3 text-[13px] text-neutral-500">{t.enterDesc}</p>
           </div>
 
-          <div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              <Stat big={String(subs.length)} label={t.statCommunities} />
-              <Stat big={subsValue} label={t.statSubscribers} />
-              <Stat big={fmtInt(posts)} label={t.statPosts} />
-              <Stat big={String(tickers)} label={t.statTickers} />
-              <Stat big={fmtInt(authors)} label={t.statAuthors} />
-            </div>
-            <div className="mt-5 flex flex-wrap items-center gap-2">
-              {subs.slice(0, 8).map((c) => (
-                <span
-                  key={c.id}
-                  className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-2.5 py-1 ring-1 ring-inset ring-white/10 bg-white/[.025]"
-                >
-                  <span
-                    className="grid place-items-center w-4 h-4 rounded-full text-white text-[9px] font-bold shrink-0"
-                    style={{ background: subColor(c.id) }}
-                  >
-                    {c.id[0]?.toUpperCase()}
-                  </span>
-                  <span className="text-[12px] text-neutral-300">r/{c.id}</span>
-                </span>
-              ))}
-            </div>
+          {/* 三条「真实人/事」证据卡 */}
+          <div className="mt-12 grid sm:grid-cols-3 gap-4 text-left">
+            <ProofCard
+              emoji="💎"
+              metric="$53K → $48M"
+              metricClass="metal-text m-gold"
+              text={
+                <>
+                  {t.p1Pre}
+                  <span className="text-gold">{t.p1Quote}</span>
+                </>
+              }
+            />
+            <ProofCard emoji="🔥" metric="$17 → $483" metricClass="text-reddit" text={t.p2} />
+            <ProofCard emoji="🧠" metric={t.p3Metric} metricClass="metal-text m-silver" text={t.p3} />
           </div>
-        </aside>
 
-        {/* ============ 右：进入 ============ */}
-        <main className="flex flex-col justify-center items-center px-6 py-10 sm:px-10">
-          <div className="w-full max-w-[400px]">
-            <div className="flex items-center justify-center gap-2.5 mb-6 lg:hidden">
-              <span className="w-9 h-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain" />
-              </span>
-              <span className="font-display font-extrabold text-cream text-xl tracking-tight">
-                reddit<span className="text-reddit">alpha</span>
-              </span>
-            </div>
+          {/* 统计条 */}
+          <div className="mt-12 flex flex-wrap items-start justify-center gap-x-10 gap-y-4">
+            <Stat big={String(subs.length)} label={t.statCommunities} />
+            <Stat big={subsValue} label={t.statSubscribers} />
+            <Stat big={fmtInt(posts)} label={t.statPosts} />
+            <Stat big={String(tickers)} label={t.statTickers} />
+            <Stat big={fmtInt(authors)} label={t.statAuthors} />
+          </div>
 
-            <div className="panel rounded-2xl p-7 sm:p-8">
-              <h2 className="font-display font-bold text-cream text-[22px] text-center tracking-tight">{t.enterTitle}</h2>
-              <p className="mt-2 text-sm text-neutral-500 text-center leading-relaxed">{t.enterDesc}</p>
-              <LocaleLink
-                href="/dashboard"
-                className="group mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-4 font-display font-bold text-white text-[15px] shadow-lg shadow-reddit/30 ring-1 ring-inset ring-white/15 hover:brightness-110 transition"
-                style={{ backgroundImage: "var(--grad-brand)" }}
+          {/* 社区芯片 */}
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
+            {subs.slice(0, 8).map((c) => (
+              <span
+                key={c.id}
+                className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-2.5 py-1 ring-1 ring-inset ring-white/10 bg-white/[.025]"
               >
-                {t.enterCta}
-                <IconArrow className="w-4 h-4 transition group-hover:translate-x-0.5" />
-              </LocaleLink>
-            </div>
-
-            <div className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-neutral-600">
-              <RedditMark size={14} />
-              <span>{t.footer}</span>
-            </div>
+                <span
+                  className="grid place-items-center w-4 h-4 rounded-full text-white text-[9px] font-bold shrink-0"
+                  style={{ background: subColor(c.id) }}
+                >
+                  {c.id[0]?.toUpperCase()}
+                </span>
+                <span className="text-[12px] text-neutral-300">r/{c.id}</span>
+              </span>
+            ))}
           </div>
-        </main>
-      </div>
+
+          {/* 页脚声明 */}
+          <div className="mt-10 flex items-center justify-center gap-1.5 text-[11px] text-neutral-600">
+            <RedditMark size={14} />
+            <span>{t.footer}</span>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
 
-function ProofRow({
+function ProofCard({
   emoji,
   metric,
   metricClass,
@@ -157,21 +145,19 @@ function ProofRow({
   text: React.ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-3.5">
-      <span className="mt-0.5 text-xl leading-none shrink-0">{emoji}</span>
-      <div>
-        <div className={`font-display font-extrabold text-lg leading-none tracking-tight ${metricClass}`}>{metric}</div>
-        <p className="mt-1.5 text-[13px] text-neutral-400 leading-relaxed">{text}</p>
-      </div>
-    </li>
+    <div className="panel rounded-2xl p-5 h-full">
+      <div className="text-2xl leading-none">{emoji}</div>
+      <div className={`mt-3 font-display font-extrabold text-xl leading-none tracking-tight ${metricClass}`}>{metric}</div>
+      <p className="mt-2.5 text-[13px] text-neutral-400 leading-relaxed">{text}</p>
+    </div>
   );
 }
 
 function Stat({ big, label }: { big: string; label: string }) {
   return (
-    <div>
-      <div className="font-display font-extrabold text-cream text-[22px] leading-none tabular tracking-tight">{big}</div>
-      <div className="mt-1 text-[11px] text-neutral-500">{label}</div>
+    <div className="text-center">
+      <div className="font-display font-extrabold text-cream text-[24px] leading-none tabular tracking-tight">{big}</div>
+      <div className="mt-1.5 text-[11px] text-neutral-500">{label}</div>
     </div>
   );
 }

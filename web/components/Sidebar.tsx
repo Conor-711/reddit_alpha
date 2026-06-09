@@ -10,7 +10,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
   const communities = getCommunities();
   return (
-    <aside className="hidden lg:flex fixed inset-y-0 left-0 w-[232px] flex-col border-r border-line bg-surface/60 backdrop-blur z-40">
+    <aside className="app-sidebar hidden lg:flex fixed inset-y-0 left-0 w-[232px] flex-col border-r border-line bg-surface/60 backdrop-blur z-40">
       <LocaleLink href="/dashboard" className="flex items-center gap-2.5 px-5 h-16 border-b border-line shrink-0">
         <span className="w-9 h-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -30,10 +30,9 @@ export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
           </div>
           <div className="space-y-0.5">
             {communities.map((c) => (
-              <LocaleLink
+              <div
                 key={c.id}
-                href={`/pulse?subreddit=${c.id}`}
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/[.04] transition group"
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg"
               >
                 <span
                   className="grid place-items-center w-5 h-5 rounded-full text-white text-[10px] font-bold shrink-0"
@@ -41,11 +40,11 @@ export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
                 >
                   {c.id[0]?.toUpperCase()}
                 </span>
-                <span className="text-sm text-neutral-300 group-hover:text-cream truncate flex-1">r/{c.id}</span>
+                <span className="text-sm text-neutral-300 truncate flex-1">r/{c.id}</span>
                 {c.subscribers > 0 && (
                   <span className="text-[10px] text-neutral-600 tabular shrink-0">{fmtCompact(c.subscribers)}</span>
                 )}
-              </LocaleLink>
+              </div>
             ))}
           </div>
         </div>

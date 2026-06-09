@@ -1,16 +1,16 @@
 import { LocaleLink } from "@/components/i18n/LocaleLink";
 import { Panel, SectionTitle, Eyebrow, MiniBar, ScoreNum } from "@/components/ui";
-import { MindshareTreemap } from "@/components/charts/MindshareTreemap";
 import { MoodGauge } from "@/components/charts/MoodGauge";
 import { FeedCard } from "@/components/FeedCard";
 import { NarrativeCard } from "@/components/NarrativeCard";
+import { TodaysAlpha } from "@/components/TodaysAlpha";
 import { IconFlame, IconWaves } from "@/components/icons";
 import { SearchHero } from "@/components/SearchHero";
 import { AdSlot } from "@/components/AdSlot";
 import { fmtInt, sentTextClass } from "@/lib/format";
 import { getDictionary, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
 import {
-  getMarketMood, getMindshare, getTreemap, getTrending, getNarratives, getFeed, getMeta,
+  getMarketMood, getMindshare, getTrending, getNarratives, getFeed, getMeta, getTodaysAlpha,
 } from "@/lib/queries";
 
 export default function Overview({ params }: { params: { lang: string } }) {
@@ -19,7 +19,7 @@ export default function Overview({ params }: { params: { lang: string } }) {
 
   const meta = getMeta();
   const mood = getMarketMood();
-  const treemap = getTreemap(28);
+  const alpha = getTodaysAlpha(3);
   const mind = getMindshare(12);
   const spikes = getTrending(8);
   const narratives = getNarratives(6);
@@ -28,6 +28,9 @@ export default function Overview({ params }: { params: { lang: string } }) {
 
   return (
     <div className="space-y-4">
+      {/* 首页头牌：今日 Reddit Alpha（置顶、Reddit 橙主题、视觉最强） */}
+      <TodaysAlpha alphas={alpha} />
+
       {/* 主入口：查任意个股的 Reddit 情报 */}
       <SearchHero suggestions={mind.slice(0, 6).map((m) => m.ticker)} />
 
@@ -52,19 +55,36 @@ export default function Overview({ params }: { params: { lang: string } }) {
         </div>
       </div>
 
-      {/* 第一行：treemap + 情绪 */}
-      <div className="grid xl:grid-cols-3 gap-4">
-        <Panel className="xl:col-span-2 p-4">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="font-display font-bold text-cream">{t.mindshareTitle}</h2>
-            <span className="text-xs text-neutral-600">{t.mindshareHint}</span>
-          </div>
-          <MindshareTreemap data={treemap} height={384} />
-          <div className="flex items-center gap-3 text-[11px] text-neutral-500">
-            <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-bull" />{t.legendBull}</span>
-            <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-neutral-500" />{t.legendNeutral}</span>
-            <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-bear" />{t.legendBear}</span>
-            <span className="ml-auto text-neutral-600">{t.clickTile}</span>
+      {/* 广告位（模块间横幅） */}
+      <AdSlot variant="banner" slot="dashboard-mid" />
+
+      {/* 第一行：热度榜 + 市场情绪 */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Panel className="lg:col-span-2 p-5">
+          <SectionTitle title={t.topTitle} hint={t.topHint} />
+          <div className="space-y-1">
+            {mind.map((r, i) => (
+              <LocaleLink
+                key={r.ticker}
+                href={`/ticker/${r.ticker}`}
+                className="grid grid-cols-[20px_64px_1fr_auto] sm:grid-cols-[24px_72px_1fr_120px_64px] items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[.03] transition group"
+              >
+                <span className="flex justify-end">
+                  {i < 3 ? (
+                    <span className={`grid place-items-center w-5 h-5 rounded-full text-[10px] font-extrabold metal-fill ${i === 0 ? "m-gold" : i === 1 ? "m-silver" : "m-bronze"}`}>{i + 1}</span>
+                  ) : (
+                    <span className="text-xs text-neutral-600 tabular">{i + 1}</span>
+                  )}
+                </span>
+                <span className="font-mono font-semibold text-cream group-hover:text-amber transition">{r.ticker}</span>
+                <span className="hidden sm:block text-sm text-neutral-500 truncate">{r.name}</span>
+                <div className="flex items-center gap-2">
+                  <MiniBar pct={(r.mindshare / maxShare) * 100} />
+                  <span className="font-mono text-xs text-neutral-300 tabular w-11 text-right">{r.mindshare.toFixed(1)}%</span>
+                </div>
+                <span className="text-right text-xs hidden sm:block"><ScoreNum score={r.sentiment} /></span>
+              </LocaleLink>
+            ))}
           </div>
         </Panel>
 
@@ -101,39 +121,8 @@ export default function Overview({ params }: { params: { lang: string } }) {
         </Panel>
       </div>
 
-      {/* 广告位（模块间横幅） */}
-      <AdSlot variant="banner" slot="dashboard-mid" />
-
-      {/* 第二行：热度榜 + 异动 */}
+      {/* 第二行：异动飙升 + 主导叙事 */}
       <div className="grid lg:grid-cols-3 gap-4">
-        <Panel className="lg:col-span-2 p-5">
-          <SectionTitle title={t.topTitle} hint={t.topHint} />
-          <div className="space-y-1">
-            {mind.map((r, i) => (
-              <LocaleLink
-                key={r.ticker}
-                href={`/ticker/${r.ticker}`}
-                className="grid grid-cols-[20px_64px_1fr_auto] sm:grid-cols-[24px_72px_1fr_120px_64px] items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[.03] transition group"
-              >
-                <span className="flex justify-end">
-                  {i < 3 ? (
-                    <span className={`grid place-items-center w-5 h-5 rounded-full text-[10px] font-extrabold metal-fill ${i === 0 ? "m-gold" : i === 1 ? "m-silver" : "m-bronze"}`}>{i + 1}</span>
-                  ) : (
-                    <span className="text-xs text-neutral-600 tabular">{i + 1}</span>
-                  )}
-                </span>
-                <span className="font-mono font-semibold text-cream group-hover:text-amber transition">{r.ticker}</span>
-                <span className="hidden sm:block text-sm text-neutral-500 truncate">{r.name}</span>
-                <div className="flex items-center gap-2">
-                  <MiniBar pct={(r.mindshare / maxShare) * 100} />
-                  <span className="font-mono text-xs text-neutral-300 tabular w-11 text-right">{r.mindshare.toFixed(1)}%</span>
-                </div>
-                <span className="text-right text-xs hidden sm:block"><ScoreNum score={r.sentiment} /></span>
-              </LocaleLink>
-            ))}
-          </div>
-        </Panel>
-
         <Panel className="p-5">
           <SectionTitle title={t.spikeTitle} href="/trending" />
           <div className="space-y-1">
@@ -156,21 +145,20 @@ export default function Overview({ params }: { params: { lang: string } }) {
             ))}
           </div>
         </Panel>
-      </div>
 
-      {/* 叙事 */}
-      <div>
-        <SectionTitle title={t.narrativesTitle} href="/narratives" />
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {narratives.map((n) => (
-            <NarrativeCard key={n.id} n={n} />
-          ))}
+        <div className="lg:col-span-2">
+          <SectionTitle title={t.narrativesTitle} href="/narratives" />
+          <div className="grid sm:grid-cols-2 gap-4">
+            {narratives.map((n) => (
+              <NarrativeCard key={n.id} n={n} />
+            ))}
+          </div>
         </div>
       </div>
 
       {/* 高质量 DD 帖（getFeed 已按 quality 排序） */}
       <div>
-        <SectionTitle title={t.ddTitle} href="/pulse" />
+        <SectionTitle title={t.ddTitle} />
         <div className="grid md:grid-cols-2 gap-4">
           {feed.map((p) => (
             <FeedCard key={p.id} p={p} />

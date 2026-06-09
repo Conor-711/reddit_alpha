@@ -1,4 +1,7 @@
-import Link from "next/link";
+"use client";
+
+import { LocaleLink } from "@/components/i18n/LocaleLink";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
@@ -13,6 +16,7 @@ export function AuthShell({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
+  const { dict } = useLocale();
   return (
     <div className="fixed inset-0 z-50 bg-ink overflow-y-auto">
       <div
@@ -23,7 +27,7 @@ export function AuthShell({
         }}
       >
         <div className="w-full max-w-[400px] py-8">
-          <Link href="/" className="flex items-center justify-center gap-2 mb-6">
+          <LocaleLink href="/" className="flex items-center justify-center gap-2 mb-6">
             <span className="w-8 h-8 rounded-lg overflow-hidden bg-white ring-1 ring-white/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain" />
@@ -31,7 +35,7 @@ export function AuthShell({
             <span className="font-display font-extrabold text-cream text-xl">
               reddit<span className="text-reddit">alpha</span>
             </span>
-          </Link>
+          </LocaleLink>
 
           <div className="panel rounded-2xl p-6 sm:p-7">
             <h1 className="font-display font-bold text-cream text-xl text-center">{title}</h1>
@@ -42,9 +46,9 @@ export function AuthShell({
           {footer && <div className="mt-5 text-center text-sm text-neutral-500">{footer}</div>}
 
           <div className="mt-6 text-center">
-            <Link href="/" className="text-xs text-neutral-600 hover:text-neutral-400 transition">
-              ← 返回看板
-            </Link>
+            <LocaleLink href="/" className="text-xs text-neutral-600 hover:text-neutral-400 transition">
+              ← {dict.common.backToDashboard}
+            </LocaleLink>
           </div>
         </div>
       </div>

@@ -3,23 +3,28 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useLocale } from "@/components/i18n/LocaleProvider";
+import { LocaleLink } from "@/components/i18n/LocaleLink";
+import { withLang } from "@/lib/i18n";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Alert } from "@/components/auth/parts";
 
 export default function AuthCallbackPage() {
+  const { lang, dict } = useLocale();
+  const t = dict.auth;
   const router = useRouter();
   const [err, setErr] = useState("");
 
   useEffect(() => {
     if (!supabase) {
-      router.replace("/login");
+      router.replace(withLang(lang, "/login"));
       return;
     }
     // URL 中可能带 OAuth 错误
     const hash = typeof window !== "undefined" ? window.location.hash : "";
     if (hash.includes("error")) {
       const p = new URLSearchParams(hash.slice(1));
-      setErr(p.get("error_description") || "登录失败，请重试。");
+      setErr(p.get("error_description") || t.callbackOauthFailed);
       return;
     }
 
@@ -29,33 +34,33 @@ export default function AuthCallbackPage() {
       const { data } = await supabase!.auth.getSession();
       if (!alive) return;
       if (data.session) {
-        router.replace("/");
+        router.replace(withLang(lang, "/"));
       } else if (tries++ < 25) {
         setTimeout(check, 200);
       } else {
-        setErr("登录超时，请重试。");
+        setErr(t.callbackTimeout);
       }
     };
     check();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) router.replace("/");
+      if (session) router.replace(withLang(lang, "/"));
     });
     return () => {
       alive = false;
       sub.subscription.unsubscribe();
     };
-  }, [router]);
+  }, [router, lang, t.callbackOauthFailed, t.callbackTimeout]);
 
   return (
-    <AuthShell title={err ? "登录失败" : "登录中…"} subtitle={err ? undefined : "正在完成身份验证"}>
+    <AuthShell title={err ? t.callbackLoginFailed : t.callbackLoggingIn} subtitle={err ? undefined : t.callbackVerifying}>
       {err ? (
         <>
           <Alert kind="error">{err}</Alert>
           <div className="mt-4 text-center">
-            <a href="/login" className="text-reddit text-sm hover:underline">
-              返回登录
-            </a>
+            <LocaleLink href="/login" className="text-reddit text-sm hover:underline">
+              {t.backToLogin}
+            </LocaleLink>
           </div>
         </>
       ) : (

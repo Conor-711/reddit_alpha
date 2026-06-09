@@ -14,9 +14,9 @@ export interface TrendRow {
   sentiment: number; spike: number; baseline: number;
 }
 export interface FeedRow {
-  id: string; title: string; selftext: string; permalink: string; subreddit: string;
+  id: string; title: string; title_zh: string; selftext: string; permalink: string; subreddit: string;
   flair: string | null; score: number; comments: number; created: string; author: string | null;
-  stance: string; sentiment: number; quality: number; tldr: string;
+  stance: string; sentiment: number; quality: number; tldr: string; tldr_zh: string;
   themes: string[]; tickers: { ticker: string; relevance: number }[];
 }
 export interface NarrativeRow {
@@ -88,10 +88,10 @@ export function getNarratives(limit = 12): NarrativeRow[] {
 
 function mapFeed(rows: any[]): FeedRow[] {
   return rows.map((r) => ({
-    id: r.id, title: r.title, selftext: r.selftext ?? "", permalink: r.permalink,
+    id: r.id, title: r.title, title_zh: r.title_zh ?? "", selftext: r.selftext ?? "", permalink: r.permalink,
     subreddit: r.subreddit_id, flair: r.flair, score: r.score, comments: r.num_comments,
     created: r.created_utc, author: r.author_id, stance: r.stance ?? "neutral",
-    sentiment: r.sentiment_score ?? 0, quality: r.quality_score ?? 0, tldr: r.tldr ?? "",
+    sentiment: r.sentiment_score ?? 0, quality: r.quality_score ?? 0, tldr: r.tldr ?? "", tldr_zh: r.tldr_zh ?? "",
     themes: parseJSON<string[]>(r.themes, []),
     tickers: parseJSON<{ ticker: string; relevance: number }[]>(r.tickers, []),
   }));
@@ -109,9 +109,9 @@ export function getFeed(opts: { limit?: number; ticker?: string; subreddit?: str
   }
   params.push(limit);
   const rows = all(
-    `SELECT p.id, p.title, p.selftext, p.permalink, p.subreddit_id, p.flair, p.score,
+    `SELECT p.id, p.title, p.title_zh, p.selftext, p.permalink, p.subreddit_id, p.flair, p.score,
             p.num_comments, p.created_utc, p.author_id,
-            ia.stance, ia.sentiment_score, ia.quality_score, ia.tldr, ia.themes, ia.tickers
+            ia.stance, ia.sentiment_score, ia.quality_score, ia.tldr, ia.tldr_zh, ia.themes, ia.tickers
        FROM posts p JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
       WHERE ${where.join(" AND ")}
       ORDER BY ia.quality_score DESC, p.score DESC LIMIT ?`,
@@ -120,12 +120,50 @@ export function getFeed(opts: { limit?: number; ticker?: string; subreddit?: str
   return mapFeed(rows);
 }
 
+// 今日 Reddit Alpha：过去 24 小时（以库内最新帖为基准）社区含金量最高的信号。
+// 取有明确标的、有 TL;DR、且带多空论点的高质量帖；附最强的一条多/空论点作为「核心 alpha」。
+export interface AlphaRow extends FeedRow {
+  bull: string[];
+  bear: string[];
+  edge: string; // 最具代表性的一条论点（多优先，其次空）
+  title_zh: string;
+  bull_zh: string[];
+  bear_zh: string[];
+  edge_zh: string;
+}
+export function getTodaysAlpha(limit = 3): AlphaRow[] {
+  const rows = all(
+    `SELECT p.id, p.title, p.title_zh, p.selftext, p.permalink, p.subreddit_id, p.flair, p.score,
+            p.num_comments, p.created_utc, p.author_id,
+            ia.stance, ia.sentiment_score, ia.quality_score, ia.tldr, ia.tldr_zh, ia.themes, ia.tickers,
+            ia.bull_points, ia.bear_points, ia.bull_points_zh, ia.bear_points_zh
+       FROM posts p JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
+      WHERE p.created_utc >= datetime((SELECT MAX(created_utc) FROM posts), '-1 day')
+        AND ia.tldr IS NOT NULL AND ia.tldr <> ''
+        AND json_array_length(COALESCE(NULLIF(ia.tickers,''),'[]')) > 0
+      ORDER BY ia.quality_score DESC, p.score DESC
+      LIMIT ?`,
+    limit
+  );
+  return mapFeed(rows).map((f, i) => {
+    const r = rows[i] as any;
+    const bull = parseJSON<string[]>(r.bull_points, []);
+    const bear = parseJSON<string[]>(r.bear_points, []);
+    const edge = (f.stance === "bear" ? bear[0] : bull[0]) || bull[0] || bear[0] || f.tldr;
+    const bull_zh = parseJSON<string[]>(r.bull_points_zh, []);
+    const bear_zh = parseJSON<string[]>(r.bear_points_zh, []);
+    const title_zh = r.title_zh || "";
+    const edge_zh = (f.stance === "bear" ? bear_zh[0] : bull_zh[0]) || bull_zh[0] || bear_zh[0] || f.tldr_zh;
+    return { ...f, bull, bear, edge, title_zh, bull_zh, bear_zh, edge_zh };
+  });
+}
+
 export function getAllTickerSymbols(): string[] {
   return all<{ ticker: string }>("SELECT ticker FROM ticker_meta").map((r) => r.ticker);
 }
 
 export interface CommentRow {
-  id: string; author: string | null; body: string; score: number; created: string; parent: string | null;
+  id: string; author: string | null; body: string; body_zh: string; score: number; created: string; parent: string | null;
 }
 
 export function getAllPostIds(): string[] {
@@ -135,10 +173,10 @@ export function getAllPostIds(): string[] {
 // 站内帖子详情：正文 + AI 摘要 + 评论（按分数排，含父子关系）。供 /post/[id] 渲染，不跳 Reddit。
 export function getPostDetail(id: string) {
   const post = get<{
-    id: string; title: string; selftext: string; permalink: string; subreddit: string;
+    id: string; title: string; title_zh: string; selftext: string; selftext_zh: string; selftext_fmt: string; permalink: string; subreddit: string;
     author: string | null; score: number; comments: number; created: string; flair: string | null; upvote_ratio: number;
   }>(
-    `SELECT p.id, p.title, p.selftext, p.permalink, p.subreddit_id AS subreddit, p.author_id AS author,
+    `SELECT p.id, p.title, p.title_zh, p.selftext, p.selftext_zh, p.selftext_fmt, p.permalink, p.subreddit_id AS subreddit, p.author_id AS author,
             p.score, p.num_comments AS comments, p.created_utc AS created, p.flair, p.upvote_ratio
        FROM posts p WHERE p.id = ?`,
     id
@@ -146,10 +184,10 @@ export function getPostDetail(id: string) {
   if (!post) return null;
 
   const a = get<{
-    stance: string; sentiment_score: number; quality_score: number; tldr: string;
-    themes: string; tickers: string; bull_points: string; bear_points: string;
+    stance: string; sentiment_score: number; quality_score: number; tldr: string; tldr_zh: string;
+    themes: string; tickers: string; bull_points: string; bear_points: string; bull_points_zh: string; bear_points_zh: string;
   }>(
-    `SELECT stance, sentiment_score, quality_score, tldr, themes, tickers, bull_points, bear_points
+    `SELECT stance, sentiment_score, quality_score, tldr, tldr_zh, themes, tickers, bull_points, bear_points, bull_points_zh, bear_points_zh
        FROM item_analysis WHERE item_id = ? AND item_type='post'`,
     id
   );
@@ -159,15 +197,18 @@ export function getPostDetail(id: string) {
         sentiment: a.sentiment_score ?? 0,
         quality: a.quality_score ?? 0,
         tldr: a.tldr ?? "",
+        tldr_zh: a.tldr_zh ?? "",
         themes: parseJSON<string[]>(a.themes, []),
         tickers: parseJSON<{ ticker: string; relevance: number }[]>(a.tickers, []),
         bull: parseJSON<string[]>(a.bull_points, []),
         bear: parseJSON<string[]>(a.bear_points, []),
+        bull_zh: parseJSON<string[]>(a.bull_points_zh, []),
+        bear_zh: parseJSON<string[]>(a.bear_points_zh, []),
       }
     : null;
 
   const comments = all<CommentRow>(
-    `SELECT id, author_id AS author, body, score, created_utc AS created, parent_id AS parent
+    `SELECT id, author_id AS author, body, body_zh, score, created_utc AS created, parent_id AS parent
        FROM comments WHERE post_id = ? ORDER BY score DESC`,
     id
   );

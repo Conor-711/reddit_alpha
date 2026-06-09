@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { LocaleLink } from "@/components/i18n/LocaleLink";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 import { useAuth } from "./AuthProvider";
 import { displayName, avatarUrl } from "@/lib/auth";
 
@@ -21,6 +22,8 @@ function AvatarBubble({ name, src, size = 30 }: { name: string; src: string | nu
 }
 
 export function UserMenu() {
+  const { dict } = useLocale();
+  const t = dict.auth;
   const { user, loading, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -37,12 +40,12 @@ export function UserMenu() {
 
   if (!user) {
     return (
-      <Link
+      <LocaleLink
         href="/login"
         className="inline-flex items-center gap-1.5 rounded-lg bg-reddit text-white text-sm font-semibold px-3.5 py-1.5 hover:brightness-110 transition"
       >
-        登录
-      </Link>
+        {t.loginLink}
+      </LocaleLink>
     );
   }
 
@@ -69,14 +72,14 @@ export function UserMenu() {
             <div className="text-xs text-neutral-500 truncate">{user.email}</div>
           </div>
           <div className="h-px bg-line my-1" />
-          <Link
+          <LocaleLink
             href="/account"
             onClick={() => setOpen(false)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:bg-white/5 hover:text-cream transition"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
-            账户设置
-          </Link>
+            {t.accountTitle}
+          </LocaleLink>
           <button
             onClick={async () => {
               setOpen(false);
@@ -85,7 +88,7 @@ export function UserMenu() {
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-bear hover:bg-bear/10 transition"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-            退出登录
+            {t.signOut}
           </button>
         </div>
       )}
