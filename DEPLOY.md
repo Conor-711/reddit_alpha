@@ -12,6 +12,19 @@ make site          # = cd web && npm run build  → 产出 web/out/
 
 ---
 
+## ⭐ 方式 0：本地部署（推荐 / 当前已在跑）
+把静态产物部署在本机，一条命令：
+```bash
+make serve         # → http://localhost:8080
+```
+- 局域网内其他设备也可访问：`http://<你的内网IP>:8080`。
+- 想长期常驻 / 开机自启：用 `pm2`、`launchd` 或 `nohup python3 -m http.server 8080 --directory web/out &`。
+- 刷新数据：`make real && make site`，刷新浏览器即可。
+
+> 想要"实时数据、免重建"的本地动态服务（改完数据直接刷新生效），也可以用 `make web-dev`（开发模式，HMR）。
+
+---
+
 ## 方式 A：Netlify Drop（最简单，浏览器拖拽）
 1. 打开 https://app.netlify.com/drop
 2. 把 `web/out` 整个文件夹拖进去 → 立刻得到一个公开 URL。

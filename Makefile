@@ -116,7 +116,13 @@ web-dev:
 # 构建静态产物（web/out/），可部署到任意静态托管。见 DEPLOY.md
 site:
 	cd web && npm run build
-	@echo "" && echo "✅ 静态产物已生成：web/out/  —— 拖到 https://app.netlify.com/drop 即可上线，或见 DEPLOY.md"
+	@echo "" && echo "✅ 静态产物已生成：web/out/  —— 见 DEPLOY.md"
+
+# 本地部署：把静态产物跑在 http://localhost:8080（如无产物会先构建）
+serve:
+	@[ -d web/out ] || $(MAKE) site
+	@echo "🌐 本地部署： http://localhost:8080   (Ctrl+C 退出)"
+	@python3 -m http.server 8080 --bind 0.0.0.0 --directory web/out
 
 clean:
 	rm -f data/dev.db
