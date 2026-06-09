@@ -113,5 +113,10 @@ web-install:
 web-dev:
 	cd web && npm run dev
 
+# 构建静态产物（web/out/），可部署到任意静态托管。见 DEPLOY.md
+site:
+	cd web && npm run build
+	@echo "" && echo "✅ 静态产物已生成：web/out/  —— 拖到 https://app.netlify.com/drop 即可上线，或见 DEPLOY.md"
+
 clean:
 	rm -f data/dev.db
