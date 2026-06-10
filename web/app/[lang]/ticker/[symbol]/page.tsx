@@ -103,9 +103,9 @@ export default function TickerPage({ params }: { params: { lang: string; symbol:
           <h2 className="mt-1 font-display font-extrabold text-cream text-[19px] tracking-tight">{t.thesisHeading}</h2>
 
           <div className="mt-4 grid md:grid-cols-2 gap-5">
-            <ThesisColumn t={t} tone="bull" count={bull} items={d.bull} />
+            <ThesisColumn t={t} lang={lang} tone="bull" count={bull} items={d.bull} />
             <div className="md:border-l md:border-line md:pl-5">
-              <ThesisColumn t={t} tone="bear" count={bear} items={d.bear} />
+              <ThesisColumn t={t} lang={lang} tone="bear" count={bear} items={d.bear} />
             </div>
           </div>
         </Panel>
@@ -214,14 +214,16 @@ function Metric({ label, value, node, accent = "text-cream" }: { label: string; 
 
 function ThesisColumn({
   t,
+  lang,
   tone,
   count,
   items,
 }: {
   t: Dictionary["ticker"];
+  lang: Locale;
   tone: "bull" | "bear";
   count: number;
-  items: { id: string; point: string; permalink: string; title: string }[];
+  items: { id: string; point: string; point_zh: string; permalink: string; title: string }[];
 }) {
   const color = tone === "bull" ? "text-bull" : "text-bear";
   const dot = tone === "bull" ? "bg-bull" : "bg-bear";
@@ -241,7 +243,7 @@ function ThesisColumn({
             <li key={i} className="text-sm text-neutral-300 leading-relaxed flex gap-2">
               <span className={`mt-1.5 w-1.5 h-1.5 rounded-full ${dot} shrink-0`} />
               <span>
-                {it.point}{" "}
+                {lang === "zh" && it.point_zh ? it.point_zh : it.point}{" "}
                 <LocaleLink href={`/post/${it.id}`} className="text-neutral-600 hover:text-reddit transition" title={it.title}>↗</LocaleLink>
               </span>
             </li>

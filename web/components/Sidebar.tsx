@@ -1,8 +1,9 @@
 import { LocaleLink } from "./i18n/LocaleLink";
 import { NavLinks } from "./NavLinks";
 import { getCommunities } from "@/lib/queries";
-import { fmtCompact, subColor } from "@/lib/format";
+import { fmtCompact } from "@/lib/format";
 import { RedditMark } from "./reddit";
+import { CommunityIcon } from "./CommunityIcon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import type { Locale, Dictionary } from "@/lib/i18n";
@@ -33,12 +34,7 @@ export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
           <div className="space-y-0.5">
             {communities.map((c) => (
               <div key={c.id} className="sb-row flex items-center gap-2.5 px-3 py-1.5 rounded-lg">
-                <span
-                  className="grid place-items-center w-5 h-5 rounded-full text-white text-[10px] font-bold shrink-0"
-                  style={{ background: subColor(c.id) }}
-                >
-                  {c.id[0]?.toUpperCase()}
-                </span>
+                <CommunityIcon id={c.id} size={20} className="text-[10px]" />
                 <span className="sb-label text-sm text-neutral-300 truncate flex-1">r/{c.id}</span>
                 {c.subscribers > 0 && (
                   <span className="sb-label text-[10px] text-neutral-600 tabular shrink-0">{fmtCompact(c.subscribers)}</span>

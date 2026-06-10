@@ -6,7 +6,7 @@ import datetime as dt
 from sqlalchemy import and_, delete, func, select
 
 from ..common.config import settings
-from ..common.db import session_scope
+from ..common.db import session_scope, data_now
 from ..common.models import ItemAnalysis, Mention, MarketMood, Post
 
 
@@ -23,7 +23,7 @@ def mood_label(m: float) -> str:
 
 
 def run_market_mood() -> dict:
-    now = dt.datetime.utcnow()
+    now = data_now()
     cutoff = now - dt.timedelta(hours=settings.mindshare_window_hours)
 
     with session_scope() as s:

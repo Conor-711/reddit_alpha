@@ -1,10 +1,10 @@
 import { LocaleLink } from "@/components/i18n/LocaleLink";
 import { notFound } from "next/navigation";
-import { Panel, Eyebrow, SubredditChip, Avatar, SentPill, TickerChip, ThemeTag } from "@/components/ui";
+import { Panel, SubredditChip, Avatar, SentPill, TickerChip, ThemeTag } from "@/components/ui";
 import { MarkdownLite } from "@/components/MarkdownLite";
 import { Comments } from "@/components/Comments";
 import { TranslateGate } from "@/components/TranslateGate";
-import { IconUpvote, IconComment } from "@/components/icons";
+import { IconUpvote, IconComment, IconDoc } from "@/components/icons";
 import { timeAgo, fmtCompact, fmtInt, REDDIT } from "@/lib/format";
 import { getPostDetail, getAllPostIds } from "@/lib/queries";
 import { getDictionary, isLocale, defaultLocale, type Locale, type Dictionary } from "@/lib/i18n";
@@ -30,10 +30,10 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
   const aiBear = isZh && analysis?.bear_zh.length ? analysis.bear_zh : analysis?.bear ?? [];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
+    <div className="max-w-4xl mx-auto space-y-5">
       <LocaleLink href="/dashboard" className="text-xs text-neutral-500 hover:text-reddit transition">{t.back}</LocaleLink>
 
-      {/* 帖头 */}
+      {/* ① 标题 / 帖头 —— masthead（投票轨 + 元信息 + 标题） */}
       <Panel className="p-5 sm:p-6 flex gap-4">
         <div className="flex flex-col items-center gap-0.5 shrink-0 w-12">
           <IconUpvote className="w-5 h-5 text-reddit" />
@@ -64,22 +64,26 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
         </div>
       </Panel>
 
-      {/* AI 投资者摘要：先给结论，方便快速判断 */}
+      {/* ② AI 投资者摘要 —— 橙色主题（结论先行） */}
       {hasAI && (
-        <Panel className="p-5" style={{ boxShadow: "inset 0 0 0 1px rgba(255,69,0,0.18), var(--panel-shadow)" }}>
-          <div className="flex items-center gap-2">
-            <Eyebrow color="text-reddit">{t.aiSummary}</Eyebrow>
-            {analysis!.stance && <SentPill stance={analysis!.stance} />}
+        <Panel
+          className="p-5 sm:p-6"
+          style={{ boxShadow: "inset 0 0 0 1.5px rgba(255,69,0,0.28), var(--panel-shadow)", background: "linear-gradient(180deg, rgba(255,69,0,0.045), transparent 40%), var(--panel-bg)" }}
+        >
+          <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-reddit/15">
+            <span className="grid place-items-center w-7 h-7 rounded-lg bg-reddit text-white text-[11px] font-extrabold shrink-0 shadow-sm shadow-reddit/40">AI</span>
+            <span className="font-display font-bold text-cream text-[15px]">{t.aiSummary}</span>
+            {analysis!.stance && <SentPill stance={analysis!.stance} className="ml-auto" />}
           </div>
-          {aiTldr && <p className="mt-2 text-[15px] text-cream leading-relaxed">{aiTldr}</p>}
+          {aiTldr && <p className="text-[15px] text-cream leading-relaxed">{aiTldr}</p>}
           {(aiBull.length > 0 || aiBear.length > 0) && (
-            <div className="mt-3.5 grid sm:grid-cols-2 gap-x-5 gap-y-3">
+            <div className="mt-4 grid sm:grid-cols-2 gap-x-5 gap-y-3">
               <PointList t={t} tone="bull" items={aiBull} />
               <PointList t={t} tone="bear" items={aiBear} />
             </div>
           )}
           {(analysis!.tickers.length > 0 || analysis!.themes.length > 0) && (
-            <div className="mt-3.5 pt-3 border-t border-line flex flex-wrap items-center gap-1.5">
+            <div className="mt-4 pt-3 border-t border-line flex flex-wrap items-center gap-1.5">
               {analysis!.tickers.slice(0, 8).map((tk) => (
                 <TickerChip key={tk.ticker} ticker={tk.ticker} size="xs" />
               ))}
@@ -91,9 +95,15 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
         </Panel>
       )}
 
-      {/* 正文 */}
+      {/* ③ 帖子正文 —— 金色主题（原始素材，阅读区） */}
       {post.selftext ? (
         <Panel className="p-5 sm:p-7">
+          <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-gold/20">
+            <span className="grid place-items-center w-7 h-7 rounded-lg bg-gold/15 text-gold shrink-0">
+              <IconDoc className="w-4 h-4" />
+            </span>
+            <span className="font-display font-bold text-cream text-[15px]">{t.bodyTitle}</span>
+          </div>
           <TranslateGate
             hasZh={!!post.selftext_zh}
             original={<MarkdownLite md={post.selftext_fmt || post.selftext} size="base" />}
@@ -111,25 +121,26 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
         </Panel>
       )}
 
-      {/* 讨论 */}
-      <div>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="w-1 h-3.5 rounded-full bg-reddit" />
-            <h2 className="font-display font-bold text-cream text-[15px] tracking-tight">{t.discussion}</h2>
-          </div>
-          <div className="h-px flex-1 bg-line/70" />
-          {comments.length > 0 && <span className="text-xs text-neutral-600 shrink-0">{comments.length} {t.commentsCount}</span>}
+      {/* ④ 讨论 / 评论 —— 绿色主题（社区） */}
+      <Panel className="p-5 sm:p-6">
+        <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-bull/15">
+          <span className="grid place-items-center w-7 h-7 rounded-lg bg-bull/15 text-bull shrink-0">
+            <IconComment className="w-4 h-4" />
+          </span>
+          <span className="font-display font-bold text-cream text-[15px]">{t.discussion}</span>
+          {comments.length > 0 && (
+            <span className="ml-auto text-xs text-neutral-500 shrink-0">{comments.length} {t.commentsCount}</span>
+          )}
         </div>
         <TranslateGate
           hasZh={comments.some((c) => !!c.body_zh)}
           original={<Comments comments={comments} showZh={false} />}
           zh={<Comments comments={comments} showZh={true} />}
         />
-      </div>
+      </Panel>
 
       {/* 原帖（次要入口） */}
-      <div className="pt-2 pb-4 text-center">
+      <div className="pt-1 pb-4 text-center">
         <a
           href={`${REDDIT}${post.permalink}`}
           target="_blank"

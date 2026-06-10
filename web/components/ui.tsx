@@ -2,8 +2,9 @@
 
 import { LocaleLink } from "./i18n/LocaleLink";
 import { useLocale } from "./i18n/LocaleProvider";
-import { sentTextClass, stanceLabel, subColor } from "@/lib/format";
+import { sentTextClass, stanceLabel } from "@/lib/format";
 import { SnooAvatar } from "./reddit";
+import { CommunityIcon } from "./CommunityIcon";
 
 // 用户头像 = Reddit 风格的 Snoo（每个用户按名字确定性取色）。
 export function Avatar({ name, size = 20 }: { name: string; size?: number }) {
@@ -13,9 +14,7 @@ export function Avatar({ name, size = 20 }: { name: string; size?: number }) {
 export function SubredditChip({ name, className = "" }: { name: string; className?: string }) {
   return (
     <span className={`inline-flex items-center gap-1.5 font-semibold text-neutral-300 ${className}`}>
-      <span className="grid place-items-center w-4 h-4 rounded-full text-white text-[9px] font-bold shrink-0" style={{ background: subColor(name) }}>
-        {name[0]?.toUpperCase()}
-      </span>
+      <CommunityIcon id={name} size={16} className="text-[9px]" />
       r/{name}
     </span>
   );

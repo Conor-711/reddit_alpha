@@ -12,7 +12,7 @@ import os
 import sqlite3
 
 from ..common.config import settings
-from ..common.claude import messages_text
+from ..common.qwen import chat
 
 
 def _db_path() -> str:
@@ -51,7 +51,7 @@ def run(limit: int | None, min_len: int):
         (min_len,),
     ).fetchall()
     for pid, selftext in rows:
-        out = messages_text(SYSTEM, selftext, model, max_tokens=4000, cache=True)
+        out = chat(SYSTEM, selftext, max_tokens=4000, enable_thinking=False)
         out = (out or "").strip()
         if out.startswith("```"):
             out = out.strip("`")

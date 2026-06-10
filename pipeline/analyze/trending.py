@@ -6,12 +6,12 @@ import statistics
 
 from sqlalchemy import and_, delete, select
 
-from ..common.db import session_scope
+from ..common.db import session_scope, data_now
 from ..common.models import ItemAnalysis, Mention, Post, Trending
 
 
 def run_trending(window_h: int = 24, recent_h: int = 6) -> int:
-    now = dt.datetime.utcnow()
+    now = data_now()
     cutoff = now - dt.timedelta(hours=48)
 
     with session_scope() as s:

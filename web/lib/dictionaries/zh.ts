@@ -192,6 +192,7 @@ export const zh = {
   post: {
     back: "← 返回看板",
     aiSummary: "AI 投资者摘要",
+    bodyTitle: "帖子正文",
     bullPoints: "看多要点",
     bearPoints: "看空要点",
     noSelftext: "这是一个链接帖，无正文内容。",

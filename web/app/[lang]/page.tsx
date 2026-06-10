@@ -1,7 +1,9 @@
 import { LocaleLink } from "@/components/i18n/LocaleLink";
 import { IconUpvote, IconArrow } from "@/components/icons";
 import { RedditMark, SnooCharacter } from "@/components/reddit";
-import { fmtInt, fmtCompact, subColor } from "@/lib/format";
+import { CommunityIcon } from "@/components/CommunityIcon";
+import { LegendsCarousel } from "@/components/LegendsCarousel";
+import { fmtInt, fmtCompact } from "@/lib/format";
 import { getLandingStats } from "@/lib/queries";
 import { getDictionary, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
 
@@ -18,112 +20,265 @@ const FALLBACK_SUBS = [
   { id: "securityanalysis", subscribers: 210051 },
 ];
 
+// 真实「Reddit 股神」——公开报道 / 本人披露的战绩，作为「Reddit = 美股高质量社区」的佐证。
+type Legend = {
+  avatar: 1 | 2 | 3 | 4; // Snoo 兜底
+  img: string; // public/legends/{img}.png（来自 X 的真实头像）
+  flair: string;
+  year: string;
+  handle: string;
+  name: { zh: string; en: string };
+  stat: string;
+  statClass: string;
+  era: { zh: string; en: string };
+  story: { zh: string; en: string };
+  tickers: string[];
+  source: string;
+  href: string;
+};
+// 按时间从过去到现在排列（左→右）。
+const LEGENDS: Legend[] = [
+  {
+    avatar: 1,
+    flair: "🚀",
+    year: "2020",
+    handle: "u/wsbgod",
+    img: "wsbgod",
+    name: { zh: "WSBGod · YOLO 之神", en: "WSBGod · the YOLO legend" },
+    stat: "$20K → $8M",
+    statClass: "text-reddit",
+    era: { zh: "TSLA / AMD 期权", en: "TSLA / AMD options" },
+    story: {
+      zh: "零经验、2 万美元起步，靠特斯拉/AMD 看涨期权封神——12.6 万美元的特斯拉期权一度值 430 万，账户从 420 万翻到约 800 万，并开直播分享屏幕自证。",
+      en: "Started with $20K and zero experience; rode Tesla/AMD calls to fame — a $126K Tesla options bet hit $4.3M, and the account doubled from $4.2M to ~$8M (later screen-shared live to prove it).",
+    },
+    tickers: ["TSLA", "AMD"],
+    source: "Markets Insider",
+    href: "https://markets.businessinsider.com/news/stocks/tesla-stock-price-reddit-trader-options-gains-millions-wallstreetbets-tsla-2020-2",
+  },
+  {
+    avatar: 2,
+    flair: "🐱",
+    year: "2021",
+    handle: "u/DeepFuckingValue",
+    img: "roaringkitty",
+    name: { zh: "Keith Gill · 咆哮小猫", en: "Keith Gill · Roaring Kitty" },
+    stat: "$53K → $48M",
+    statClass: "metal-text m-gold",
+    era: { zh: "GME · 史诗级逼空", en: "GME · the great squeeze" },
+    story: {
+      zh: "在 r/wallstreetbets 用深度 DD 押注 GameStop，约 5.3 万美元本金一度做到约 4,800 万；2024 年回归晒仓，账面峰值一度超 5.85 亿美元。国会留下名言「I like the stock.」",
+      en: "Backed GameStop with deep DD on r/wallstreetbets — ~$53K became ~$48M. His 2024 return revealed a position that peaked above $585M on paper. Told Congress: “I like the stock.”",
+    },
+    tickers: ["GME"],
+    source: "Wikipedia · CNBC",
+    href: "https://en.wikipedia.org/wiki/Keith_Gill",
+  },
+  {
+    avatar: 3,
+    flair: "📈",
+    year: "2021",
+    handle: "@imkevinxu",
+    img: "kevinxu",
+    name: { zh: "Kevin Xu · 全程公开晒单", en: "Kevin Xu · trades in the open" },
+    stat: "$35K → $8M",
+    statClass: "text-reddit",
+    era: { zh: "透明交易 · 后创办锦标赛", en: "Transparent trading" },
+    story: {
+      zh: "疫情期间加入 WSB，把每一笔交易（含具体金额）全程公开晒出——3.5 万美元做到 800 多万且没有回吐；后来创办了 Stonk Madness 交易锦标赛。",
+      en: "Joined WSB during the pandemic and posted every single trade (with dollar amounts) in the open — turned $35K into $8M+ without giving it back. Later founded the Stonk Madness tournament.",
+    },
+    tickers: ["TSLA", "SPY"],
+    source: "BusinessWire",
+    href: "https://www.businesswire.com/news/home/20240305148457/en/",
+  },
+  {
+    avatar: 4,
+    flair: "🔬",
+    year: "2024–26",
+    handle: "u/AleaBito",
+    img: "serenity",
+    name: { zh: "Serenity · 卡脖子猎手", en: "Serenity · chokepoint hunter" },
+    stat: "≈ 225× / 2 年",
+    statClass: "metal-text m-silver",
+    era: { zh: "AI 供应链「卡脖子」", en: "AI supply-chain chokepoints" },
+    story: {
+      zh: "反向研究英伟达上游的「卡脖子」环节：2022 年发 AXTI 深度贴被 WSB 封号，随后 $12→$140；一条推让 Raspberry Pi 两天涨约 90%。两年自述约 225 倍回报，被路透、彭博点名，50 万+ 粉丝跟读（自述、未经审计）。",
+      en: "Reverse-engineers the “chokepoints” upstream of Nvidia: his 2022 AXTI thesis got him banned from WSB right before it ran $12→$140; one post sent Raspberry Pi ~90% in two days. ~225× self-reported over two years, cited by Reuters & Bloomberg, 500K+ followers (self-reported, unaudited).",
+    },
+    tickers: ["AXTI", "RPI", "NVDA"],
+    source: "Reuters · Bloomberg",
+    href: "https://x.com/aleabitoreddit",
+  },
+  {
+    avatar: 2,
+    flair: "⚡",
+    year: "2025",
+    handle: "u/Grandmaster-Obi",
+    img: "obi",
+    name: { zh: "Grandmaster-Obi · 散户动能", en: "Grandmaster-Obi · retail momentum" },
+    stat: "100–1,000%+",
+    statClass: "text-reddit",
+    era: { zh: "散户涨停潮 · 触发熔断", en: "Halts & momentum" },
+    story: {
+      zh: "2021 GME 逼空时期的 WSB 老版主，最懂散户动能怎么点燃。2025 年带着「Making Easy Money」社群，被指连续触发多次美股熔断停牌，数十个标的接连跑出 100%–1,000%+。",
+      en: "A former r/wallstreetbets moderator from the 2021 GME run who knows how retail momentum ignites. In 2025 his “Making Easy Money” community was credited with triggering multiple market circuit-breaker halts, with dozens of plays running 100%–1,000%+.",
+    },
+    tickers: ["GME", "0DTE"],
+    source: "WSB · 2025",
+    href: "https://www.reddit.com/r/wallstreetbets/",
+  },
+];
+
 export default function Landing({ params }: { params: { lang: string } }) {
   const lang: Locale = isLocale(params.lang) ? params.lang : defaultLocale;
+  const zh = lang === "zh";
   const t = getDictionary(lang).landing;
 
   const s = getLandingStats();
   const subs = s.subs.length ? s.subs : FALLBACK_SUBS;
   const totalSubscribers =
     s.totalSubscribers || FALLBACK_SUBS.reduce((a, c) => a + c.subscribers, 0);
-  const subsValue = lang === "zh" ? `${fmtInt(Math.round(totalSubscribers / 1e4))}万` : fmtCompact(totalSubscribers);
+  const subsValue = zh ? `${fmtInt(Math.round(totalSubscribers / 1e4))}万` : fmtCompact(totalSubscribers);
   const posts = s.posts || 1176;
   const tickers = s.tickers || 50;
   const authors = s.authors || 848;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto theme-canvas">
-      {/* 顶部品牌 */}
-      <header className="flex items-center justify-center sm:justify-start px-6 sm:px-10 h-20 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="w-9 h-9 rounded-xl overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain rounded-xl" />
-          </span>
-          <span className="font-display font-extrabold text-cream text-[18px] tracking-tight">
-            reddit<span className="text-reddit">alpha</span>
-          </span>
-        </div>
-      </header>
+  // 把股神数据本地化后传给客户端轮播组件
+  const legendViews = LEGENDS.map((L) => ({
+    handle: L.handle,
+    name: L.name[lang],
+    era: L.era[lang],
+    story: L.story[lang],
+    stat: L.stat,
+    statClass: L.statClass,
+    tickers: L.tickers,
+    source: L.source,
+    href: L.href,
+    flair: L.flair,
+    year: L.year,
+    img: `${BASE}/legends/${L.img}.png`,
+    fallback: `${BASE}/avatars/snoo-${L.avatar}.png`,
+  }));
 
-      {/* 全屏居中英雄区 */}
-      <main className="flex flex-col items-center text-center px-6 pb-16 pt-2 sm:pt-6">
-        <div className="w-full max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-semibold ring-1 ring-inset ring-white/10 bg-white/[.03] text-neutral-300">
-            <IconUpvote className="w-3.5 h-3.5 text-reddit" />
-            {t.badge}
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto snap-y snap-proximity theme-canvas">
+      {/* ============ 视图一：英雄区（整屏） ============ */}
+      <section className="relative min-h-[100svh] snap-start flex flex-col">
+        <header className="flex items-center justify-center sm:justify-start px-6 sm:px-10 h-20 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <span className="w-9 h-9 rounded-xl overflow-hidden bg-white shrink-0 ring-1 ring-white/10">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`${BASE}/logo.png`} alt="redditalpha" className="w-full h-full object-contain rounded-xl" />
+            </span>
+            <span className="font-display font-extrabold text-cream text-[18px] tracking-tight">
+              reddit<span className="text-reddit">alpha</span>
+            </span>
+          </div>
+        </header>
+
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pb-20 pt-2">
+          <div className="w-full max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-semibold ring-1 ring-inset ring-white/10 bg-white/[.03] text-neutral-300">
+              <IconUpvote className="w-3.5 h-3.5 text-reddit" />
+              {t.badge}
+            </div>
+
+            <h1 className="mt-6 font-display font-extrabold text-cream tracking-tight leading-[1.08] text-[clamp(34px,6vw,60px)]">
+              {t.titleLead} <span className="metal-text m-gold">{t.titleGold}</span>
+              {t.titleTail}
+            </h1>
+
+            <p className="mt-5 mx-auto max-w-2xl text-neutral-400 leading-relaxed text-[15px] sm:text-[16px]">
+              {t.ledePre}
+              <span className="text-cream font-medium">{t.ledeStrong}</span>
+              {t.ledePost}
+            </p>
+
+            <div className="mt-8 flex flex-col items-center">
+              <LocaleLink
+                href="/dashboard"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl px-7 py-4 font-display font-bold text-white text-[16px] shadow-lg shadow-reddit/30 ring-1 ring-inset ring-white/15 hover:brightness-110 hover:-translate-y-0.5 transition"
+                style={{ backgroundImage: "var(--grad-brand)" }}
+              >
+                {t.enterCta}
+                <IconArrow className="w-4 h-4 transition group-hover:translate-x-0.5" />
+              </LocaleLink>
+              <p className="mt-3 text-[13px] text-neutral-500">{t.enterDesc}</p>
+            </div>
+
+            {/* 统计条 */}
+            <div className="mt-12 flex flex-wrap items-start justify-center gap-x-10 gap-y-4">
+              <Stat big={String(subs.length)} label={t.statCommunities} />
+              <Stat big={subsValue} label={t.statSubscribers} />
+              <Stat big={fmtInt(posts)} label={t.statPosts} />
+              <Stat big={String(tickers)} label={t.statTickers} />
+              <Stat big={fmtInt(authors)} label={t.statAuthors} />
+            </div>
+          </div>
+        </div>
+
+        {/* 向下滚动提示 */}
+        <a
+          href="#legends"
+          className="absolute inset-x-0 bottom-6 mx-auto flex w-max flex-col items-center gap-1 text-[12px] text-neutral-500 hover:text-reddit transition"
+        >
+          <span>{zh ? "看看从这里走出的股神" : "Meet the legends forged here"}</span>
+          <svg className="w-5 h-5 animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </a>
+      </section>
+
+      {/* ============ 视图二：Reddit 股神（整屏） ============ */}
+      <section id="legends" className="relative min-h-[100svh] snap-start flex flex-col justify-center px-6 py-16">
+        <div className="w-full max-w-5xl mx-auto">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[.16em] text-reddit">
+              <RedditMark size={16} />
+              {zh ? "真实人物 · 真实战绩" : "Real people · real track records"}
+            </div>
+            <h2 className="mt-3 font-display font-extrabold text-cream tracking-tight leading-[1.1] text-[clamp(28px,4.5vw,44px)]">
+              {zh ? "从 Reddit 走出的" : "Legends forged on "}
+              <span className="metal-text m-gold">{zh ? "股神" : "Reddit"}</span>
+            </h2>
+            <p className="mt-4 mx-auto max-w-2xl text-neutral-400 leading-relaxed text-[15px]">
+              {zh
+                ? "Reddit 不是赌场——有人靠公开的深度研究改写了人生。这正是这里值得被认真对待的原因。"
+                : "Reddit isn't a casino — here, deep public research has changed lives. That's why this community is worth taking seriously."}
+            </p>
           </div>
 
-          <h1 className="mt-6 font-display font-extrabold text-cream tracking-tight leading-[1.08] text-[clamp(34px,6vw,60px)]">
-            {t.titleLead} <span className="metal-text m-gold">{t.titleGold}</span>
-            {t.titleTail}
-          </h1>
+          {/* 股神时间线轮播：左右滑动，居中者被聚光灯打亮 */}
+          <div className="mt-6">
+            <LegendsCarousel
+              legends={legendViews}
+              spotlight={zh ? "聚光灯" : "Spotlight"}
+              hint={zh ? "← 左右滑动 · 从过去到现在的 Reddit 股神 →" : "← swipe · Reddit legends, past to present →"}
+            />
+          </div>
 
-          <p className="mt-5 mx-auto max-w-2xl text-neutral-400 leading-relaxed text-[15px] sm:text-[16px]">
-            {t.ledePre}
-            <span className="text-cream font-medium">{t.ledeStrong}</span>
-            {t.ledePost}
+          <p className="mt-3 text-center text-[11px] text-neutral-600 max-w-2xl mx-auto leading-relaxed">
+            {zh
+              ? "* 战绩来自公开报道与本人披露，部分为未经第三方审计的自述，仅作为社区信息质量的佐证，非投资建议。"
+              : "* Track records are from public reporting and self-disclosure; some figures are self-reported and not third-party audited. Shown as evidence of community quality, not investment advice."}
           </p>
 
-          {/* 主 CTA */}
-          <div className="mt-8 flex flex-col items-center">
-            <LocaleLink
-              href="/dashboard"
-              className="group inline-flex items-center justify-center gap-2 rounded-xl px-7 py-4 font-display font-bold text-white text-[16px] shadow-lg shadow-reddit/30 ring-1 ring-inset ring-white/15 hover:brightness-110 hover:-translate-y-0.5 transition"
-              style={{ backgroundImage: "var(--grad-brand)" }}
-            >
-              {t.enterCta}
-              <IconArrow className="w-4 h-4 transition group-hover:translate-x-0.5" />
-            </LocaleLink>
-            <p className="mt-3 text-[13px] text-neutral-500">{t.enterDesc}</p>
-          </div>
-
-          {/* 三条「真实人/事」证据卡 */}
-          <div className="mt-12 grid sm:grid-cols-3 gap-4 text-left">
-            <ProofCard
-              emoji="💎"
-              metric="$53K → $48M"
-              metricClass="metal-text m-gold"
-              text={
-                <>
-                  {t.p1Pre}
-                  <span className="text-gold">{t.p1Quote}</span>
-                </>
-              }
-            />
-            <ProofCard emoji="🔥" metric="$17 → $483" metricClass="text-reddit" text={t.p2} />
-            <ProofCard emoji="🧠" metric={t.p3Metric} metricClass="metal-text m-silver" text={t.p3} />
-          </div>
-
-          {/* 统计条 */}
-          <div className="mt-12 flex flex-wrap items-start justify-center gap-x-10 gap-y-4">
-            <Stat big={String(subs.length)} label={t.statCommunities} />
-            <Stat big={subsValue} label={t.statSubscribers} />
-            <Stat big={fmtInt(posts)} label={t.statPosts} />
-            <Stat big={String(tickers)} label={t.statTickers} />
-            <Stat big={fmtInt(authors)} label={t.statAuthors} />
-          </div>
-
           {/* 社区芯片 */}
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-2">
             {subs.slice(0, 8).map((c) => (
               <span
                 key={c.id}
                 className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-2.5 py-1 ring-1 ring-inset ring-white/10 bg-white/[.025]"
               >
-                <span
-                  className="grid place-items-center w-4 h-4 rounded-full text-white text-[9px] font-bold shrink-0"
-                  style={{ background: subColor(c.id) }}
-                >
-                  {c.id[0]?.toUpperCase()}
-                </span>
+                <CommunityIcon id={c.id} size={18} className="text-[9px]" />
                 <span className="text-[12px] text-neutral-300">r/{c.id}</span>
               </span>
             ))}
           </div>
 
-          {/* Reddit 吉祥物：社区「股神」小队，站在一条柔光地面上 */}
-          <div className="relative mt-16">
+          {/* Reddit 吉祥物：社区「股神小队」 */}
+          <div className="relative mt-12">
             <div
               className="absolute inset-x-0 bottom-1 h-px"
               style={{ background: "linear-gradient(90deg, transparent, rgba(255,69,0,.35), transparent)" }}
@@ -134,40 +289,30 @@ export default function Landing({ params }: { params: { lang: string } }) {
                   key={n}
                   n={n}
                   className={`w-auto drop-shadow-[0_14px_22px_rgba(0,0,0,.22)] transition duration-300 hover:-translate-y-1.5 ${
-                    i === 1 || i === 2 ? "h-24 sm:h-36" : "h-20 sm:h-28"
+                    i === 1 || i === 2 ? "h-20 sm:h-28" : "h-16 sm:h-24"
                   } ${i % 2 ? "translate-y-1" : ""}`}
                 />
               ))}
             </div>
           </div>
 
-          {/* 页脚声明 */}
-          <div className="mt-12 flex items-center justify-center gap-1.5 text-[11px] text-neutral-600">
-            <RedditMark size={14} />
-            <span>{t.footer}</span>
+          {/* CTA + 页脚 */}
+          <div className="mt-10 flex flex-col items-center gap-4">
+            <LocaleLink
+              href="/dashboard"
+              className="group inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-display font-bold text-white text-[15px] shadow-lg shadow-reddit/30 ring-1 ring-inset ring-white/15 hover:brightness-110 hover:-translate-y-0.5 transition"
+              style={{ backgroundImage: "var(--grad-brand)" }}
+            >
+              {t.enterCta}
+              <IconArrow className="w-4 h-4 transition group-hover:translate-x-0.5" />
+            </LocaleLink>
+            <div className="flex items-center justify-center gap-1.5 text-[11px] text-neutral-600">
+              <RedditMark size={14} />
+              <span>{t.footer}</span>
+            </div>
           </div>
         </div>
-      </main>
-    </div>
-  );
-}
-
-function ProofCard({
-  emoji,
-  metric,
-  metricClass,
-  text,
-}: {
-  emoji: string;
-  metric: string;
-  metricClass: string;
-  text: React.ReactNode;
-}) {
-  return (
-    <div className="panel rounded-2xl p-5 h-full">
-      <div className="text-2xl leading-none">{emoji}</div>
-      <div className={`mt-3 font-display font-extrabold text-xl leading-none tracking-tight ${metricClass}`}>{metric}</div>
-      <p className="mt-2.5 text-[13px] text-neutral-400 leading-relaxed">{text}</p>
+      </section>
     </div>
   );
 }

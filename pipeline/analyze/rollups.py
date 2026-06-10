@@ -12,7 +12,7 @@ import yaml
 from sqlalchemy import and_, delete, select
 
 from ..common.config import PKG_DATA_DIR, settings
-from ..common.db import session_scope
+from ..common.db import session_scope, data_now
 from ..common.models import ItemAnalysis, Mention, Post, TickerRollup
 
 
@@ -27,7 +27,7 @@ def _hour_floor(ts: dt.datetime) -> dt.datetime:
 
 def run_rollups() -> int:
     weights = _sub_weights()
-    now = dt.datetime.utcnow()
+    now = data_now()
     window_h = settings.mindshare_window_hours
     max_h = max(window_h, 48)
     cutoff = now - dt.timedelta(hours=max_h)

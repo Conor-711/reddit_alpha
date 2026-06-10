@@ -66,3 +66,14 @@ def session_scope() -> Session:
 
 def dialect() -> str:
     return engine.dialect.name
+
+
+def data_now():
+    """窗口锚点：取库内最新帖的时间，让「过去 24h」窗口对齐数据本身，
+    而非脚本运行时刻（静态数据集 / 离线分析也能正确出聚合）。无数据则退回 utcnow()。"""
+    import datetime as _dt
+    from sqlalchemy import select, func
+    from .models import Post
+    with session_scope() as s:
+        mx = s.execute(select(func.max(Post.created_utc))).scalar()
+    return mx or _dt.datetime.utcnow()

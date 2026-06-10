@@ -65,7 +65,8 @@ def cmd_extract(args):
 
 def cmd_analyze(args):
     from .analyze.item_analyze import run_analyze
-    run_analyze(mock=args.mock, limit=args.limit)
+    run_analyze(mock=args.mock, qwen=getattr(args, "qwen", False), limit=args.limit,
+                workers=getattr(args, "workers", 8), force=getattr(args, "force", False))
 
 
 def cmd_rollup(args):
@@ -155,7 +156,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("scrape-comments"); sp.add_argument("--top", type=int, default=400); sp.add_argument("--per-post", type=int, default=15); sp.add_argument("--min-comments", type=int, default=4); sp.set_defaults(func=cmd_scrape_comments)
     sp = sub.add_parser("extract"); sp.add_argument("--reextract", action="store_true"); sp.set_defaults(func=cmd_extract)
 
-    sp = sub.add_parser("analyze"); sp.add_argument("--mock", action="store_true"); sp.add_argument("--limit", type=int, default=None); sp.set_defaults(func=cmd_analyze)
+    sp = sub.add_parser("analyze"); sp.add_argument("--mock", action="store_true"); sp.add_argument("--qwen", action="store_true"); sp.add_argument("--force", action="store_true"); sp.add_argument("--workers", type=int, default=8); sp.add_argument("--limit", type=int, default=None); sp.set_defaults(func=cmd_analyze)
     sub.add_parser("rollup").set_defaults(func=cmd_rollup)
     sub.add_parser("mood").set_defaults(func=cmd_mood)
     sub.add_parser("trending").set_defaults(func=cmd_trending)

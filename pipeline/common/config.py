@@ -44,6 +44,13 @@ class Settings:
     model_synth: str = os.environ.get("ANTHROPIC_MODEL_SYNTH", "claude-sonnet-4-6")
     model_brief: str = os.environ.get("ANTHROPIC_MODEL_BRIEF", "claude-sonnet-4-6")
 
+    # 通义千问（DashScope, OpenAI 兼容）—— 真实 AI 分析/翻译
+    qwen_api_key: str = os.environ.get("QWEN_API_KEY", "")
+    qwen_model: str = os.environ.get("QWEN_MODEL", "qwen3.7-plus")
+    qwen_base_url: str = os.environ.get(
+        "QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    )
+
     ingest_post_limit: int = field(default_factory=lambda: _int("INGEST_POST_LIMIT", 120))
     ingest_comment_min_score: int = field(
         default_factory=lambda: _int("INGEST_COMMENT_MIN_SCORE", 15)
@@ -59,6 +66,10 @@ class Settings:
     @property
     def has_anthropic(self) -> bool:
         return bool(self.anthropic_api_key)
+
+    @property
+    def has_qwen(self) -> bool:
+        return bool(self.qwen_api_key)
 
 
 @lru_cache(maxsize=1)

@@ -17,7 +17,7 @@ import sqlite3
 from typing import Iterable
 
 from ..common.config import settings
-from ..common.claude import messages_text, extract_json
+from ..common.qwen import messages_json
 
 
 def _db_path() -> str:
@@ -50,8 +50,8 @@ def translate_texts(texts: list[str], model: str, max_tokens: int = 4000) -> lis
         return []
     payload = {"items": [{"i": i, "t": t} for i, t in enumerate(texts)]}
     user = "翻译下面 JSON 中 items 的每个 t 为简体中文：\n" + json.dumps(payload, ensure_ascii=False)
-    out = messages_text(SYSTEM, user, model, max_tokens=max_tokens, cache=True)
-    data = extract_json(out) or {}
+    # 普通翻译 → 不开思考模式（更快更省）。
+    data = messages_json(SYSTEM, user, max_tokens=max_tokens, enable_thinking=False) or {}
     res = [""] * len(texts)
     for it in data.get("items", []):
         try:
@@ -68,28 +68,61 @@ def _chunks(seq: list, n: int) -> Iterable[list]:
         yield seq[i : i + n]
 
 
+from concurrent.futures import ThreadPoolExecutor, as_completed  # noqa: E402
+
+
+WORKERS = 10
+
+
 def translate_posts(c: sqlite3.Connection, model: str, limit: int | None):
-    rows = c.execute(
-        "SELECT id, title, selftext FROM posts "
-        "WHERE (title_zh IS NULL OR (selftext<>'' AND selftext_zh IS NULL)) "
+    # 标题（短）：批量、并发
+    titles = c.execute(
+        "SELECT id, title FROM posts WHERE title<>'' AND (title_zh IS NULL OR title_zh='') "
         + (f"LIMIT {int(limit)}" if limit else "")
     ).fetchall()
-    # 标题：短，批量
-    titles = [(r[0], r[1]) for r in rows if r[1]]
-    for batch in _chunks(titles, 18):
-        zhs = translate_texts([t for _, t in batch], model, max_tokens=2500)
-        for (pid, _), zh in zip(batch, zhs):
-            if zh:
-                c.execute("UPDATE posts SET title_zh=? WHERE id=?", (zh, pid))
+    tbatches = list(_chunks(titles, 24))
+
+    def _title_batch(batch):
+        try:
+            zhs = translate_texts([t for _, t in batch], model, max_tokens=3000)
+        except Exception:  # noqa: BLE001
+            zhs = [""] * len(batch)
+        return [(pid, zh) for (pid, _), zh in zip(batch, zhs)]
+
+    if tbatches:
+        with ThreadPoolExecutor(WORKERS) as ex:
+            for i, fut in enumerate(as_completed([ex.submit(_title_batch, b) for b in tbatches]), 1):
+                for pid, zh in fut.result():
+                    if zh:
+                        c.execute("UPDATE posts SET title_zh=? WHERE id=?", (zh, pid))
+                if i % 10 == 0 or i == len(tbatches):
+                    c.commit(); print(f"posts.title {i}/{len(tbatches)} 批", flush=True)
         c.commit()
-    # 正文：可能很长，逐条
-    for pid, _title, selftext in rows:
-        if selftext:
-            zh = translate_texts([selftext], model, max_tokens=6000)[0]
-            if zh:
-                c.execute("UPDATE posts SET selftext_zh=? WHERE id=?", (zh, pid))
-                c.commit()
-    print(f"posts: {len(rows)} 条处理")
+
+    # 正文（长）：逐条、并发（API 在线程里，写库在主线程）
+    rows = c.execute(
+        "SELECT id, selftext FROM posts WHERE selftext<>'' AND (selftext_zh IS NULL OR selftext_zh='') "
+        + (f"LIMIT {int(limit)}" if limit else "")
+    ).fetchall()
+
+    def _one(row):
+        pid, selftext = row
+        try:
+            zh = translate_texts([selftext], model, max_tokens=6000)
+            return pid, (zh[0] if zh else "")
+        except Exception:  # noqa: BLE001
+            return pid, ""
+
+    if rows:
+        with ThreadPoolExecutor(WORKERS) as ex:
+            for i, fut in enumerate(as_completed([ex.submit(_one, r) for r in rows]), 1):
+                pid, zh = fut.result()
+                if zh:
+                    c.execute("UPDATE posts SET selftext_zh=? WHERE id=?", (zh, pid))
+                if i % 20 == 0 or i == len(rows):
+                    c.commit(); print(f"posts.selftext {i}/{len(rows)}", flush=True)
+        c.commit()
+    print(f"posts: 标题 {len(titles)} + 正文 {len(rows)} 处理完", flush=True)
 
 
 def translate_analysis(c: sqlite3.Connection, model: str, limit: int | None):
@@ -116,16 +149,29 @@ def translate_analysis(c: sqlite3.Connection, model: str, limit: int | None):
 
 def translate_comments(c: sqlite3.Connection, model: str, limit: int | None):
     rows = c.execute(
-        "SELECT id, body FROM comments WHERE body<>'' AND body_zh IS NULL "
+        "SELECT id, body FROM comments WHERE body<>'' AND (body_zh IS NULL OR body_zh='') "
         + (f"LIMIT {int(limit)}" if limit else "")
     ).fetchall()
-    for batch in _chunks(rows, 12):
-        zhs = translate_texts([b for _, b in batch], model, max_tokens=4000)
-        for (cid, _), zh in zip(batch, zhs):
-            if zh:
-                c.execute("UPDATE comments SET body_zh=? WHERE id=?", (zh, cid))
+    batches = list(_chunks(rows, 12))
+
+    def _batch(batch):
+        try:
+            zhs = translate_texts([b for _, b in batch], model, max_tokens=4000)
+        except Exception:  # noqa: BLE001
+            zhs = [""] * len(batch)
+        return [(cid, zh) for (cid, _), zh in zip(batch, zhs)]
+
+    done = 0
+    if batches:
+        with ThreadPoolExecutor(WORKERS) as ex:
+            for i, fut in enumerate(as_completed([ex.submit(_batch, b) for b in batches]), 1):
+                for cid, zh in fut.result():
+                    if zh:
+                        c.execute("UPDATE comments SET body_zh=? WHERE id=?", (zh, cid)); done += 1
+                if i % 10 == 0 or i == len(batches):
+                    c.commit(); print(f"comments {i}/{len(batches)} 批 · {done} 条", flush=True)
         c.commit()
-    print(f"comments: {len(rows)} 条处理")
+    print(f"comments: {len(rows)} 条处理（成功 {done}）", flush=True)
 
 
 def run(only: set[str], limit: int | None):

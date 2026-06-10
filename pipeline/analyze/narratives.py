@@ -11,7 +11,7 @@ import re
 from sqlalchemy import and_, delete, select
 
 from ..common.config import settings
-from ..common.db import session_scope
+from ..common.db import session_scope, data_now
 from ..common.models import (
     ItemAnalysis, Mention, Narrative, NarrativePost, NarrativeTicker, Post,
 )
@@ -34,7 +34,7 @@ def _load_window_posts(s, cutoff):
 
 
 def run_narratives(mock: bool = False, min_posts: int = 2) -> int:
-    now = dt.datetime.utcnow()
+    now = data_now()
     cutoff = now - dt.timedelta(hours=settings.mindshare_window_hours)
 
     with session_scope() as s:

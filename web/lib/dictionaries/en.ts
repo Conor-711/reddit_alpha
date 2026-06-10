@@ -194,6 +194,7 @@ export const en: Dictionary = {
   post: {
     back: "← Back to dashboard",
     aiSummary: "AI investor summary",
+    bodyTitle: "Post body",
     bullPoints: "Bull points",
     bearPoints: "Bear points",
     noSelftext: "This is a link post with no body text.",

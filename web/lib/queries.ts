@@ -252,25 +252,29 @@ export function getTickerDetail(symbol: string) {
   );
   const posts = mapFeed(
     all(
-      `SELECT p.id, p.title, p.selftext, p.permalink, p.subreddit_id, p.flair, p.score,
+      `SELECT p.id, p.title, p.title_zh, p.selftext, p.permalink, p.subreddit_id, p.flair, p.score,
               p.num_comments, p.created_utc, p.author_id,
-              ia.stance, ia.sentiment_score, ia.quality_score, ia.tldr, ia.themes, ia.tickers
+              ia.stance, ia.sentiment_score, ia.quality_score, ia.tldr, ia.tldr_zh, ia.themes, ia.tickers
          FROM posts p JOIN mentions m ON m.item_id=p.id AND m.item_type='post'
          LEFT JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
         WHERE m.ticker = ? ORDER BY p.score DESC LIMIT 12`,
       ticker
     )
   );
-  // 多空论点：从相关帖的 bull/bear_points 汇集
-  const bull: { id: string; point: string; permalink: string; title: string }[] = [];
-  const bear: { id: string; point: string; permalink: string; title: string }[] = [];
+  // 多空论点：从相关帖的 bull/bear_points 汇集（含中文 _zh，一一对应）
+  const bull: { id: string; point: string; point_zh: string; permalink: string; title: string }[] = [];
+  const bear: { id: string; point: string; point_zh: string; permalink: string; title: string }[] = [];
   for (const p of posts) {
-    const a = get<{ bull_points: string; bear_points: string }>(
-      "SELECT bull_points, bear_points FROM item_analysis WHERE item_id=? AND item_type='post'",
+    const a = get<{ bull_points: string; bear_points: string; bull_points_zh: string; bear_points_zh: string }>(
+      "SELECT bull_points, bear_points, bull_points_zh, bear_points_zh FROM item_analysis WHERE item_id=? AND item_type='post'",
       p.id
     );
-    for (const pt of parseJSON<string[]>(a?.bull_points, [])) bull.push({ id: p.id, point: pt, permalink: p.permalink, title: p.title });
-    for (const pt of parseJSON<string[]>(a?.bear_points, [])) bear.push({ id: p.id, point: pt, permalink: p.permalink, title: p.title });
+    const bp = parseJSON<string[]>(a?.bull_points, []);
+    const bpz = parseJSON<string[]>(a?.bull_points_zh, []);
+    bp.forEach((pt, i) => bull.push({ id: p.id, point: pt, point_zh: bpz[i] || "", permalink: p.permalink, title: p.title }));
+    const rp = parseJSON<string[]>(a?.bear_points, []);
+    const rpz = parseJSON<string[]>(a?.bear_points_zh, []);
+    rp.forEach((pt, i) => bear.push({ id: p.id, point: pt, point_zh: rpz[i] || "", permalink: p.permalink, title: p.title }));
   }
   const narrs = all<NarrativeRow>(
     `SELECT n.id, n.slug, n.name, n.summary, n.post_count, n.ticker_count, n.heat

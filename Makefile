@@ -84,6 +84,15 @@ analyze:
 analyze-mock:
 	$(MANAGE) analyze --mock
 
+# 真实 AI 打标（通义千问 qwen3.7-plus，双语英文+中文，并发、可断点续跑，需 .env 里 QWEN_API_KEY）。
+# 跑完建议接 rollup/mood/trending/narratives 让聚合对齐新情绪。
+analyze-qwen:
+	$(MANAGE) analyze --qwen --workers 10
+	$(MANAGE) rollup
+	$(MANAGE) mood
+	$(MANAGE) trending
+	$(MANAGE) narratives --mock
+
 rollup:
 	$(MANAGE) rollup
 	$(MANAGE) mood
