@@ -100,10 +100,10 @@ export function SentPill({ stance, score, className = "" }: { stance?: string; s
   );
 }
 
-export function TickerChip({ ticker, size = "sm" }: { ticker: string; size?: "sm" | "xs" }) {
+export function TickerChip({ ticker, size = "sm", base = "/ticker" }: { ticker: string; size?: "sm" | "xs"; base?: string }) {
   return (
     <LocaleLink
-      href={`/ticker/${ticker}`}
+      href={`${base}/${ticker}`}
       className={`inline-flex items-center font-mono font-medium rounded-md bg-white/[.04] text-neutral-200 hover:bg-amber/15 hover:text-amber transition ring-1 ring-inset ring-white/8 ${
         size === "xs" ? "text-[11px] px-1.5 py-0.5" : "text-xs px-2 py-0.5"
       }`}

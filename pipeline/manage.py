@@ -13,9 +13,20 @@ def cmd_db_init(args):
     print("[db-init] 建表完成。")
 
 
+def cmd_migrate(args):
+    """把已有库迁移到带 market 维度的新 schema（幂等）。"""
+    from .common.db import migrate_market
+    migrate_market()
+
+
 def cmd_seed(args):
     from .ingest.seed_tickers import seed_tickers
     seed_tickers(use_fallback=args.fallback)
+
+
+def cmd_seed_cn_hk(args):
+    from .ingest.seed_tickers import seed_cn_hk
+    seed_cn_hk()
 
 
 def cmd_load_sample(args):
@@ -50,7 +61,15 @@ def cmd_refresh(args):
 
 def cmd_scrape(args):
     from .ingest.arctic_scrape import scrape
-    scrape(days=args.days, limit_per=args.limit)
+    markets = {m.strip() for m in args.markets.split(",")} if getattr(args, "markets", None) else None
+    scrape(days=args.days, limit_per=args.limit, markets=markets)
+
+
+def cmd_scrape_china(args):
+    """关键词/ticker 过滤扫描综合中国社区，引入 A 股(沪深)等中国股市内容。"""
+    from .ingest.arctic_scrape import scrape_china_filtered
+    subs = [x.strip() for x in args.subs.split(",")] if getattr(args, "subs", None) else None
+    scrape_china_filtered(days=args.days, limit_per=args.limit, subs=subs)
 
 
 def cmd_scrape_comments(args):
@@ -69,24 +88,34 @@ def cmd_analyze(args):
                 workers=getattr(args, "workers", 8), force=getattr(args, "force", False))
 
 
+def _markets_arg(args) -> list[str]:
+    """--market us|cn|all（默认 all = 美股 + 中概港股各跑一次）。"""
+    mk = getattr(args, "market", "all") or "all"
+    return ["us", "cn"] if mk == "all" else [mk]
+
+
 def cmd_rollup(args):
     from .analyze.rollups import run_rollups
-    run_rollups()
+    for mk in _markets_arg(args):
+        run_rollups(market=mk)
 
 
 def cmd_mood(args):
     from .analyze.market_mood import run_market_mood
-    run_market_mood()
+    for mk in _markets_arg(args):
+        run_market_mood(market=mk)
 
 
 def cmd_trending(args):
     from .analyze.trending import run_trending
-    run_trending()
+    for mk in _markets_arg(args):
+        run_trending(market=mk)
 
 
 def cmd_narratives(args):
     from .analyze.narratives import run_narratives
-    run_narratives(mock=args.mock)
+    for mk in _markets_arg(args):
+        run_narratives(mock=args.mock, market=mk)
 
 
 def cmd_brief(args):
@@ -145,22 +174,25 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("db-init").set_defaults(func=cmd_db_init)
+    sub.add_parser("migrate").set_defaults(func=cmd_migrate)
 
     sp = sub.add_parser("seed-tickers"); sp.add_argument("--fallback", action="store_true"); sp.set_defaults(func=cmd_seed)
+    sub.add_parser("seed-cn-hk").set_defaults(func=cmd_seed_cn_hk)
     sub.add_parser("load-sample").set_defaults(func=cmd_load_sample)
     sub.add_parser("ensure-sample").set_defaults(func=cmd_ensure_sample)
 
     sp = sub.add_parser("ingest"); sp.add_argument("--once", action="store_true"); sp.add_argument("--no-comments", action="store_true"); sp.set_defaults(func=cmd_ingest)
     sub.add_parser("refresh").set_defaults(func=cmd_refresh)
-    sp = sub.add_parser("scrape"); sp.add_argument("--days", type=int, default=3); sp.add_argument("--limit", type=int, default=300); sp.set_defaults(func=cmd_scrape)
+    sp = sub.add_parser("scrape"); sp.add_argument("--days", type=int, default=3); sp.add_argument("--limit", type=int, default=300); sp.add_argument("--markets", type=str, default=None, help="逗号分隔，如 us,cn；省略=全部"); sp.set_defaults(func=cmd_scrape)
+    sp = sub.add_parser("scrape-china"); sp.add_argument("--days", type=int, default=30); sp.add_argument("--limit", type=int, default=300); sp.add_argument("--subs", type=str, default=None, help="逗号分隔的来源版块；省略=默认综合中国社区"); sp.set_defaults(func=cmd_scrape_china)
     sp = sub.add_parser("scrape-comments"); sp.add_argument("--top", type=int, default=400); sp.add_argument("--per-post", type=int, default=15); sp.add_argument("--min-comments", type=int, default=4); sp.set_defaults(func=cmd_scrape_comments)
     sp = sub.add_parser("extract"); sp.add_argument("--reextract", action="store_true"); sp.set_defaults(func=cmd_extract)
 
     sp = sub.add_parser("analyze"); sp.add_argument("--mock", action="store_true"); sp.add_argument("--qwen", action="store_true"); sp.add_argument("--force", action="store_true"); sp.add_argument("--workers", type=int, default=8); sp.add_argument("--limit", type=int, default=None); sp.set_defaults(func=cmd_analyze)
-    sub.add_parser("rollup").set_defaults(func=cmd_rollup)
-    sub.add_parser("mood").set_defaults(func=cmd_mood)
-    sub.add_parser("trending").set_defaults(func=cmd_trending)
-    sp = sub.add_parser("narratives"); sp.add_argument("--mock", action="store_true"); sp.set_defaults(func=cmd_narratives)
+    sp = sub.add_parser("rollup"); sp.add_argument("--market", type=str, default="all", help="us|cn|all"); sp.set_defaults(func=cmd_rollup)
+    sp = sub.add_parser("mood"); sp.add_argument("--market", type=str, default="all"); sp.set_defaults(func=cmd_mood)
+    sp = sub.add_parser("trending"); sp.add_argument("--market", type=str, default="all"); sp.set_defaults(func=cmd_trending)
+    sp = sub.add_parser("narratives"); sp.add_argument("--mock", action="store_true"); sp.add_argument("--market", type=str, default="all"); sp.set_defaults(func=cmd_narratives)
     sp = sub.add_parser("brief"); sp.add_argument("--mock", action="store_true"); sp.set_defaults(func=cmd_brief)
     sp = sub.add_parser("daily"); sp.add_argument("--rebuild", action="store_true"); sp.set_defaults(func=cmd_daily)
     sub.add_parser("stats").set_defaults(func=cmd_stats)

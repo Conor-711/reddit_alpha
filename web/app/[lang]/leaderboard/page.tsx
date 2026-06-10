@@ -1,58 +1,190 @@
-import { Panel, ScoreNum, MiniBar, Avatar, PageHeader, HeaderStat } from "@/components/ui";
+import { Panel, Avatar, MiniBar, TickerChip } from "@/components/ui";
+import { LocaleLink } from "@/components/i18n/LocaleLink";
+import { IconUpvote, IconComment } from "@/components/icons";
 import { fmtInt, fmtCompact } from "@/lib/format";
-import { getLeaderboard } from "@/lib/queries";
-import { getDictionary, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
+import { getLeaderboard, type AuthorRow } from "@/lib/queries";
+import { isLocale, defaultLocale, type Locale } from "@/lib/i18n";
+
+const TIERS = [
+  { zh: "观察中", en: "Watchlist", chip: "bg-white/[.06] text-neutral-400", num: "text-neutral-300" },
+  { zh: "潜力股", en: "On the radar", chip: "bg-bull/12 text-bull", num: "text-bull" },
+  { zh: "实力派", en: "Sharp operator", chip: "bg-reddit/12 text-reddit", num: "text-reddit" },
+  { zh: "准股神", en: "Rising legend", chip: "bg-gold/12 metal-text m-gold", num: "metal-text m-gold" },
+];
+
+const COMPS: { k: keyof AuthorRow; zh: string; en: string; color: string }[] = [
+  { k: "cQuality", zh: "DD 质量", en: "DD quality", color: "bg-gold" },
+  { k: "cInfluence", zh: "社区影响", en: "Influence", color: "bg-reddit" },
+  { k: "cConviction", zh: "立场鲜明", en: "Conviction", color: "bg-bull" },
+  { k: "cOutput", zh: "持续产出", en: "Output", color: "bg-silver" },
+];
 
 export default function LeaderboardPage({ params }: { params: { lang: string } }) {
   const lang: Locale = isLocale(params.lang) ? params.lang : defaultLocale;
-  const t = getDictionary(lang).leaderboard;
-  const rows = getLeaderboard(25);
-  const maxScore = Math.max(1, ...rows.map((r) => r.score || 0));
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        eyebrow={t.eyebrow}
-        eyebrowColor="text-bull"
-        title={t.title}
-        subtitle={t.subtitle}
-        right={<HeaderStat label={t.stat} value={String(rows.length)} tone="text-bull" />}
-      />
+  const zh = lang === "zh";
+  const rows = getLeaderboard(24);
+  const top3 = rows.slice(0, 3);
+  const rest = rows.slice(3);
 
+  return (
+    <div className="space-y-5">
+      {/* 头部 · 叙事 */}
+      <div className="pb-4 border-b border-line">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[.16em] text-reddit">
+          🏆 {zh ? "下一个股神 · 实力榜" : "Next legend · power ranking"}
+        </div>
+        <h1 className="mt-2 font-display font-extrabold text-cream tracking-tight text-[clamp(22px,3.4vw,30px)] leading-tight">
+          {zh ? "发掘下一个来自 Reddit 的" : "Find the next "}
+          <span className="metal-text m-gold">{zh ? "股神" : "Reddit legend"}</span>
+        </h1>
+        <p className="mt-2 text-sm text-neutral-500 max-w-3xl leading-relaxed">
+          {zh
+            ? "Alpha 实力分综合每位作者的「DD 质量 × 社区影响力 × 立场鲜明度 × 持续产出」——在他们成名之前，先一步发现下一个 DeepFuckingValue。"
+            : "The Alpha Score blends each author's DD quality × community influence × conviction × consistency — to spot the next DeepFuckingValue before the crowd does."}
+        </p>
+        {/* 方法论 */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-neutral-500">
+          {COMPS.map((c, i) => (
+            <span key={c.k} className="inline-flex items-center gap-1.5">
+              <i className={`w-2 h-2 rounded-sm ${c.color}`} />
+              {zh ? c.zh : c.en}
+              <span className="text-neutral-600">{[30, 30, 20, 20][i]}%</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* 领奖台 · Top 3 */}
+      <div className="grid md:grid-cols-3 gap-4">
+        {top3.map((r, i) => (
+          <article
+            key={r.author}
+            className={`panel rounded-2xl p-5 flex flex-col panel-hover ${
+              i === 0 ? "ring-1 ring-inset ring-gold/40" : ""
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`grid place-items-center w-7 h-7 rounded-full text-[12px] font-extrabold metal-fill ${i === 0 ? "m-gold" : i === 1 ? "m-silver" : "m-bronze"}`}>
+                {i + 1}
+              </span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${TIERS[r.tier].chip}`}>
+                {zh ? TIERS[r.tier].zh : TIERS[r.tier].en}
+              </span>
+            </div>
+
+            <div className="mt-3 flex items-center gap-3">
+              <Avatar name={r.author} size={48} />
+              <div className="min-w-0">
+                <div className="font-display font-bold text-cream truncate">u/{r.author}</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`font-display font-extrabold text-[28px] leading-none tabular ${TIERS[r.tier].num}`}>{r.score}</span>
+                  <span className="text-[11px] text-neutral-500">{zh ? "实力分" : "Alpha"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <Bars r={r} zh={zh} />
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-line flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-neutral-500">
+              <span className="inline-flex items-center gap-1"><IconUpvote className="w-3.5 h-3.5 text-reddit" />{fmtCompact(r.upvotes)}</span>
+              <span className="inline-flex items-center gap-1"><IconComment className="w-3.5 h-3.5" />{fmtCompact(r.comments)}</span>
+              <span>{fmtInt(r.posts)} {zh ? "帖" : "posts"}</span>
+              <span>{r.tickers} {zh ? "标的" : "tickers"}</span>
+            </div>
+
+            {(r.topTickers.length > 0 || r.topPostId) && (
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                  {r.topTickers.slice(0, 3).map((tk) => (
+                    <TickerChip key={tk} ticker={tk} size="xs" />
+                  ))}
+                </div>
+                {r.topPostId && (
+                  <LocaleLink href={`/post/${r.topPostId}`} className="text-[11px] text-reddit font-medium hover:underline shrink-0">
+                    {zh ? "看代表作 →" : "Top DD →"}
+                  </LocaleLink>
+                )}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+
+      {/* 完整榜单 */}
       <Panel className="p-2 sm:p-4">
-        <div className="grid grid-cols-[36px_1fr_80px_72px_64px] sm:grid-cols-[44px_1fr_160px_100px_90px] items-center gap-3 px-3 py-2 text-[11px] text-neutral-500 uppercase tracking-wide">
+        <div className="hidden sm:grid grid-cols-[40px_1fr_120px_1.3fr_150px_88px] items-center gap-3 px-3 py-2 text-[11px] text-neutral-500 uppercase tracking-wide">
           <span className="text-right">#</span>
-          <span>{t.colAuthor}</span>
-          <span className="text-right">{t.colKarma}</span>
-          <span className="text-right">{t.colPosts}</span>
-          <span className="text-right">{t.colSentiment}</span>
+          <span>{zh ? "作者" : "Author"}</span>
+          <span>{zh ? "实力分" : "Alpha"}</span>
+          <span>{zh ? "四维分量" : "Factors"}</span>
+          <span>{zh ? "标的" : "Tickers"}</span>
+          <span className="text-right">{zh ? "赞" : "Upvotes"}</span>
         </div>
         <div className="space-y-0.5">
-          {rows.map((r, i) => (
-            <div key={r.author} className="grid grid-cols-[36px_1fr_80px_72px_64px] sm:grid-cols-[44px_1fr_160px_100px_90px] items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[.03] transition">
-              <span className="flex justify-end">
-                {i < 3 ? (
-                  <span className={`grid place-items-center w-6 h-6 rounded-full text-[11px] font-extrabold metal-fill ${i === 0 ? "m-gold" : i === 1 ? "m-silver" : "m-bronze"}`}>
-                    {i + 1}
-                  </span>
-                ) : (
-                  <span className="text-xs text-neutral-600 tabular">{i + 1}</span>
-                )}
-              </span>
+          {rest.map((r, i) => (
+            <div
+              key={r.author}
+              className="grid grid-cols-[28px_1fr_auto] sm:grid-cols-[40px_1fr_120px_1.3fr_150px_88px] items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[.03] transition"
+            >
+              <span className="text-right text-xs text-neutral-600 tabular">{i + 4}</span>
               <span className="flex items-center gap-2 min-w-0">
-                <Avatar name={r.author} size={22} />
-                <span className="font-medium text-cream truncate">u/{r.author}</span>
+                <Avatar name={r.author} size={26} />
+                <span className="min-w-0">
+                  <LocaleLink
+                    href={r.topPostId ? `/post/${r.topPostId}` : "/leaderboard"}
+                    className="block font-medium text-cream truncate hover:text-reddit transition"
+                  >
+                    u/{r.author}
+                  </LocaleLink>
+                  <span className={`text-[10px] ${TIERS[r.tier].num}`}>{zh ? TIERS[r.tier].zh : TIERS[r.tier].en}</span>
+                </span>
               </span>
-              <span className="flex items-center gap-2 justify-end">
-                <span className="hidden sm:block w-16"><MiniBar pct={((r.score || 0) / maxScore) * 100} color="bg-bull" /></span>
-                <span className="font-mono text-sm text-neutral-300 tabular">{fmtCompact(r.score || 0)}</span>
+              <span className="flex items-baseline gap-1">
+                <span className={`font-display font-extrabold text-lg tabular ${TIERS[r.tier].num}`}>{r.score}</span>
               </span>
-              <span className="text-right font-mono text-sm text-neutral-400 tabular">{fmtInt(r.posts)}</span>
-              <span className="text-right text-sm"><ScoreNum score={r.sentiment || 0} /></span>
+              <span className="hidden sm:block">
+                <Bars r={r} zh={zh} compact />
+              </span>
+              <span className="hidden sm:flex flex-wrap items-center gap-1">
+                {r.topTickers.slice(0, 3).map((tk) => (
+                  <TickerChip key={tk} ticker={tk} size="xs" />
+                ))}
+              </span>
+              <span className="hidden sm:inline-flex items-center justify-end gap-1 text-sm text-neutral-400 tabular">
+                <IconUpvote className="w-3.5 h-3.5 text-reddit" />{fmtCompact(r.upvotes)}
+              </span>
             </div>
           ))}
-          {rows.length === 0 && <div className="px-3 py-6 text-sm text-neutral-600">{t.empty}</div>}
+          {rows.length === 0 && (
+            <div className="px-3 py-6 text-sm text-neutral-600">{zh ? "暂无数据。" : "No data yet."}</div>
+          )}
         </div>
       </Panel>
+
+      <p className="text-[11px] text-neutral-600 leading-relaxed">
+        {zh
+          ? "* 实力分基于公开内容质量与社区互动（赞、评论、立场、产出）计算，反映「潜力」而非真实盈亏（无价格回测）。仅供研究，非投资建议。"
+          : "* The Alpha Score is computed from public content quality and community engagement (upvotes, comments, conviction, output). It reflects potential, not realized P&L (no price backtest). Research only, not investment advice."}
+      </p>
+    </div>
+  );
+}
+
+function Bars({ r, zh, compact = false }: { r: AuthorRow; zh: boolean; compact?: boolean }) {
+  return (
+    <div className={compact ? "space-y-1" : "space-y-1.5"}>
+      {COMPS.map((c) => {
+        const pct = Math.round((Number(r[c.k]) || 0) * 100);
+        return (
+          <div key={c.k} className="flex items-center gap-2">
+            {!compact && <span className="w-14 text-[10px] text-neutral-500 shrink-0">{zh ? c.zh : c.en}</span>}
+            <MiniBar pct={pct} color={c.color} />
+            <span className="w-6 text-right text-[10px] text-neutral-500 tabular">{pct}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

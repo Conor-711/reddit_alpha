@@ -4,7 +4,7 @@ import { TickerChip } from "./ui";
 import { useLocale } from "./i18n/LocaleProvider";
 import type { NarrativeRow } from "@/lib/queries";
 
-export function NarrativeCard({ n }: { n: NarrativeRow }) {
+export function NarrativeCard({ n, tickerBase = "/ticker" }: { n: NarrativeRow; tickerBase?: string }) {
   const { dict } = useLocale();
   const heatPct = Math.min(100, Math.max(10, Math.round((n.heat / 16000) * 100)));
   return (
@@ -27,7 +27,7 @@ export function NarrativeCard({ n }: { n: NarrativeRow }) {
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {n.tickers.slice(0, 6).map((t) => (
-          <TickerChip key={t.ticker} ticker={t.ticker} size="xs" />
+          <TickerChip key={t.ticker} ticker={t.ticker} size="xs" base={tickerBase} />
         ))}
       </div>
     </div>

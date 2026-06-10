@@ -20,6 +20,7 @@ from .common.db import init_db
 # 过去 24 小时 → 爬 1 天即可覆盖窗口
 WINDOW_DAYS = 1
 SCRAPE_LIMIT_PER = 400  # 单板块单日上限，足以覆盖一天的活跃帖
+MARKETS = ("us", "cn")  # 美股 / 中概·港股，各出一套聚合（互不污染）
 
 
 def _safe(label: str, fn, *args, **kwargs):
@@ -48,7 +49,7 @@ def run_daily(rebuild: bool = False) -> None:
     from .analyze.narratives import run_narratives
     from .analyze.rollups import run_rollups
     from .analyze.trending import run_trending
-    from .ingest.arctic_scrape import scrape, scrape_comments
+    from .ingest.arctic_scrape import scrape, scrape_china_filtered, scrape_comments
     from .ingest.sample_loader import load_sample
 
     started = dt.datetime.now()
@@ -59,6 +60,8 @@ def run_daily(rebuild: bool = False) -> None:
 
     # 1) 拉取过去 24 小时的帖子与高赞评论（Arctic Shift）
     _safe("scrape", scrape, days=WINDOW_DAYS, limit_per=SCRAPE_LIMIT_PER)
+    # 1.5) 关键词/ticker 过滤扫描综合中国社区，补充 A 股(沪深)等中国股市内容（量小，市场=cn）
+    _safe("scrape-china", scrape_china_filtered, days=WINDOW_DAYS, limit_per=SCRAPE_LIMIT_PER)
     _safe("scrape-comments", scrape_comments, top_n=400, per_post=15, min_comments=4)
 
     # 2) 若库内仍为空（如网络受限爬取失败），用样本兜底，保证站点不空
@@ -66,15 +69,22 @@ def run_daily(rebuild: bool = False) -> None:
         print("[daily] 库内无帖子，载入样本兜底。")
         _safe("load-sample", load_sample)
 
-    # 3) AI 逐帖打标 + 聚合
+    # 3) AI 逐帖打标（对全部帖通跑，market 已在帖上） + 按 market 分别聚合
     _safe("analyze", run_analyze, mock=mock)
-    _safe("rollup", run_rollups)
-    _safe("mood", run_market_mood)
-    _safe("trending", run_trending)
-    _safe("narratives", run_narratives, mock=mock)
+    for mk in MARKETS:
+        _safe(f"rollup[{mk}]", run_rollups, market=mk)
+        _safe(f"mood[{mk}]", run_market_mood, market=mk)
+        _safe(f"trending[{mk}]", run_trending, market=mk)
+        _safe(f"narratives[{mk}]", run_narratives, mock=mock, market=mk)
     _safe("brief", run_brief, mock=mock)
 
-    # 4) 可选：重建静态站点，让部署的页面反映最新一天的数据
+    # 4) 翻译成简体中文（标题/正文/AI 摘要/评论 → *_zh），保证 zh 模式 100% 中文。
+    #    需要 .env 里有 QWEN_API_KEY；缺失则跳过（_safe 兜底）。
+    if os.environ.get("QWEN_API_KEY"):
+        from .analyze.translate import run as run_translate
+        _safe("translate", run_translate, {"posts", "analysis", "comments"}, None)
+
+    # 5) 可选：重建静态站点，让部署的页面反映最新一天的数据
     if rebuild:
         _build_site()
 

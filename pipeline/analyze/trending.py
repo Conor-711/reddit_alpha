@@ -10,7 +10,7 @@ from ..common.db import session_scope, data_now
 from ..common.models import ItemAnalysis, Mention, Post, Trending
 
 
-def run_trending(window_h: int = 24, recent_h: int = 6) -> int:
+def run_trending(window_h: int = 24, recent_h: int = 6, market: str = "us") -> int:
     now = data_now()
     cutoff = now - dt.timedelta(hours=48)
 
@@ -20,7 +20,8 @@ def run_trending(window_h: int = 24, recent_h: int = 6) -> int:
             .join(Post, Post.id == Mention.item_id)
             .outerjoin(ItemAnalysis, and_(ItemAnalysis.item_id == Mention.item_id,
                                           ItemAnalysis.item_type == "post"))
-            .where(Mention.item_type == "post", Mention.created_utc >= cutoff)
+            .where(Mention.item_type == "post", Mention.created_utc >= cutoff,
+                   Post.market == market)
         ).all()
 
         per: dict[str, dict] = {}
@@ -53,15 +54,15 @@ def run_trending(window_h: int = 24, recent_h: int = 6) -> int:
 
         results.sort(key=lambda r: (-r["z"], -r["win"]))
 
-        s.execute(delete(Trending).where(Trending.window == "24h"))
+        s.execute(delete(Trending).where(Trending.window == "24h", Trending.market == market))
         for rank, r in enumerate(results, 1):
             s.add(Trending(
-                ticker=r["ticker"], window="24h", as_of=now, mention_count=r["win"],
+                ticker=r["ticker"], market=market, window="24h", as_of=now, mention_count=r["win"],
                 baseline_mean=r["mean"], baseline_std=r["std"], zscore=r["z"],
                 sentiment_avg=r["sent"], sentiment_delta=0.0, is_spike=r["spike"], rank=rank,
             ))
         nspike = sum(1 for r in results if r["spike"])
-    print(f"[trending] {len(results)} 个 ticker，spike {nspike} 个。")
+    print(f"[trending] ({market}) {len(results)} 个 ticker，spike {nspike} 个。")
     return len(results)
 
 

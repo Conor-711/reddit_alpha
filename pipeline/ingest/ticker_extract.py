@@ -32,6 +32,9 @@ ALIASES: dict[str, str] = {
 
 CASHTAG_RE = re.compile(r"\$([A-Za-z]{1,5}(?:\.[A-Za-z])?)")
 BARE_RE = re.compile(r"\b([A-Z]{1,5})\b")
+# 港股/A 股数字代码：0700 / 0700.HK / 9988 / 600519.SS / 300750.SZ。
+# 仅当规范化后命中「策划的闭集」(cn_codes) 才记为提及 → 几乎零误报。
+CN_CODE_RE = re.compile(r"(?<![\w])(\d{3,6})(\.(?:HK|SS|SZ|SH))?\b", re.IGNORECASE)
 
 
 @dataclass
@@ -39,6 +42,25 @@ class TickerDict:
     tickers: set[str] = field(default_factory=set)
     stop: set[str] = field(default_factory=set)
     aliases: dict[str, str] = field(default_factory=dict)
+    cn_codes: dict[str, str] = field(default_factory=dict)  # 数字代码各种写法 → 规范 ticker
+
+
+def _build_cn_codes(tickers: set[str]) -> dict[str, str]:
+    """从 ticker_meta 里形如 `0700.HK` / `600519.SS` 的代码构建闭集查找表。
+    登记三种写法：带后缀(0700.HK)、裸数字(0700)、去前导零(700)，都映射回规范 ticker。"""
+    out: dict[str, str] = {}
+    pat = re.compile(r"^(\d{3,6})\.(HK|SS|SZ)$")
+    for tk in tickers:
+        m = pat.match(tk)
+        if not m:
+            continue
+        digits, suf = m.group(1), m.group(2)
+        out[f"{digits}.{suf}"] = tk
+        out[digits] = tk
+        dz = digits.lstrip("0")
+        if dz and dz != digits:
+            out[dz] = tk
+    return out
 
 
 def load_stoplist() -> set[str]:
@@ -64,7 +86,8 @@ def load_ticker_dict(session) -> TickerDict:
         tickers.add(tk.upper())
         for a in (al or []):
             aliases[str(a).lower()] = tk.upper()
-    return TickerDict(tickers=tickers, stop=load_stoplist(), aliases=aliases)
+    return TickerDict(tickers=tickers, stop=load_stoplist(), aliases=aliases,
+                      cn_codes=_build_cn_codes(tickers))
 
 
 def load_ticker_dict_from_fallback() -> TickerDict:
@@ -112,6 +135,22 @@ def extract_mentions(text: str, tdict: TickerDict, min_confidence: float = 0.5) 
             continue
         conf = 0.9 if len(tok) >= 4 else 0.82 if len(tok) == 3 else 0.65
         consider(tok, "dict", conf, m.start())
+
+    # 2.5) 港股/A 股数字代码（闭集，几乎零误报）
+    if tdict.cn_codes:
+        for m in CN_CODE_RE.finditer(text):
+            digits, suf = m.group(1), (m.group(2) or "")
+            if suf:
+                suf = suf.upper().replace(".SH", ".SS")
+                canon = (tdict.cn_codes.get(digits + suf) or tdict.cn_codes.get(digits)
+                         or tdict.cn_codes.get(digits.lstrip("0")))
+                conf = 0.95
+            else:
+                # 裸数字：至少 4 位才认（避免把 "700 million" 之类当代码）
+                canon = tdict.cn_codes.get(digits) if len(digits) >= 4 else None
+                conf = 0.9
+            if canon:
+                consider(canon, "cncode", conf, m.start())
 
     # 3) 公司名/别名（精选、低歧义）
     low = text.lower()

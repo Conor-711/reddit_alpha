@@ -22,33 +22,36 @@ def _slug(name: str, i: int) -> str:
     return s or f"theme-{i}"
 
 
-def _load_window_posts(s, cutoff):
+def _load_window_posts(s, cutoff, market):
     rows = s.execute(
         select(Post.id, Post.title, Post.score, Post.permalink, Post.subreddit_id,
                ItemAnalysis.sentiment_score, ItemAnalysis.stance, ItemAnalysis.themes,
                ItemAnalysis.tickers, ItemAnalysis.quality_score)
         .join(ItemAnalysis, and_(ItemAnalysis.item_id == Post.id, ItemAnalysis.item_type == "post"))
-        .where(Post.created_utc >= cutoff)
+        .where(Post.created_utc >= cutoff, Post.market == market)
     ).all()
     return rows
 
 
-def run_narratives(mock: bool = False, min_posts: int = 2) -> int:
+def run_narratives(mock: bool = False, min_posts: int = 2, market: str = "us") -> int:
     now = data_now()
     cutoff = now - dt.timedelta(hours=settings.mindshare_window_hours)
 
     with session_scope() as s:
-        rows = _load_window_posts(s, cutoff)
+        rows = _load_window_posts(s, cutoff, market)
 
         if mock:
             groups = _cluster_by_theme(rows)
         else:
             groups = _cluster_by_claude(rows)
 
-        # 清空旧叙事
-        s.execute(delete(NarrativeTicker))
-        s.execute(delete(NarrativePost))
-        s.execute(delete(Narrative))
+        # 只清空本 market 的旧叙事（保留另一 market）
+        old_ids = [r[0] for r in s.execute(
+            select(Narrative.id).where(Narrative.market == market)).all()]
+        if old_ids:
+            s.execute(delete(NarrativeTicker).where(NarrativeTicker.narrative_id.in_(old_ids)))
+            s.execute(delete(NarrativePost).where(NarrativePost.narrative_id.in_(old_ids)))
+            s.execute(delete(Narrative).where(Narrative.market == market))
         s.flush()
 
         kept = 0
@@ -57,6 +60,7 @@ def run_narratives(mock: bool = False, min_posts: int = 2) -> int:
             if len(g["post_ids"]) < min_posts:
                 continue
             nar = Narrative(
+                market=market,
                 slug=_slug(g["name"], i), name=g["name"], summary=g["summary"],
                 period_start=cutoff, period_end=now, post_count=len(g["post_ids"]),
                 ticker_count=len(g["tickers"]), heat=round(g["heat"], 2),

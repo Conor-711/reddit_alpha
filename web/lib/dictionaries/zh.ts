@@ -8,10 +8,13 @@ export const zh = {
   },
   nav: {
     dashboard: "看板",
+    cnstocks: "中概·港股",
     search: "搜索",
     trending: "异动",
     narratives: "叙事",
     leaderboard: "作者榜",
+    usSection: "美股",
+    cnSection: "中概·港股·A股",
   },
   chrome: {
     tagline: "Reddit 美股舆情情报 · 8 个财经板块",
@@ -89,6 +92,25 @@ export const zh = {
     cta: "查情报",
     popular: "热门：",
   },
+  search: {
+    // 搜不到 / 数据不足的专门提示页
+    notFoundEyebrow: "没有命中",
+    notFoundTitle: "没找到「{q}」的 Reddit 情报",
+    notFoundDesc: "可能是股票代码拼写有误，或这只标的暂时还没有足够的 Reddit 讨论被收录。",
+    reasonTyped: "确认代码拼写正确（例如 NVDA、TSLA、AAPL）",
+    reasonData: "冷门标的可能暂无足够社区讨论，换个热门标的试试",
+    didYouMean: "你是不是想搜",
+    tryPopular: "或看看热门标的",
+    back: "重新搜索",
+    // 搜索热度榜
+    rankTitleLive: "全网搜索热榜",
+    rankTitleHeat: "社区热度榜",
+    rankSubLive: "全站用户真实搜索次数排行",
+    rankSubHeat: "暂用 Reddit 社区讨论热度排行",
+    searchesUnit: "次搜索",
+    mentionsUnit: "篇讨论",
+    empty: "还没有搜索记录——来查第一只股票吧",
+  },
   landing: {
     badge: "实时 · 真实 · 一站式 Reddit 美股情报",
     titleLead: "Reddit，是讨论美股",
@@ -144,6 +166,12 @@ export const zh = {
     narrativesTitle: "主导叙事",
     ddTitle: "高质量 DD 帖",
     emptyPre: "暂无数据，请先运行 ",
+  },
+  cn: {
+    eyebrow: "中概股 · 港股 · 每日舆情",
+    heading: "Reddit 在热议哪些中国资产",
+    subtitle: "覆盖 r/HKstocks、r/ChinaStocks 等社区：中概 ADR（BABA/NIO/PDD…）+ 港股（腾讯 0700 等），沪深 A 股标的一并归入。",
+    back: "← 返回中概·港股",
   },
   ad: {
     label: "广告",

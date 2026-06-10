@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 import time
 
 import requests
@@ -62,8 +63,11 @@ def fetch_subreddit(name: str, days: int, max_count: int) -> list[dict]:
     return out[:max_count]
 
 
-def scrape(days: int = 3, limit_per: int = 300) -> dict:
+def scrape(days: int = 3, limit_per: int = 300, markets: set[str] | None = None) -> dict:
+    """爬取 subreddits.yml 里的板块。markets=None 爬全部；否则只爬指定口径（如 {"cn"}）。"""
     subs = load_subreddit_config()
+    if markets:
+        subs = [e for e in subs if e.get("market", "us") in markets]
     stats = {"posts": 0, "mentions": 0, "subreddits": 0}
 
     with session_scope() as s:
@@ -73,9 +77,10 @@ def scrape(days: int = 3, limit_per: int = 300) -> dict:
 
         for entry in subs:
             name = entry["name"]
+            market = entry.get("market", "us")
             items = fetch_subreddit(name, days, limit_per)
             subscribers = int((items[0].get("subreddit_subscribers") if items else 0) or 0)
-            sid = upsert_subreddit(s, name, display_name=name, subscribers=subscribers)
+            sid = upsert_subreddit(s, name, display_name=name, subscribers=subscribers, market=market)
             stats["subreddits"] += 1
 
             for it in items:
@@ -88,7 +93,7 @@ def scrape(days: int = 3, limit_per: int = 300) -> dict:
                 if selftext in ("[removed]", "[deleted]"):
                     selftext = ""
                 upsert_post(
-                    s, id=it["id"], subreddit_id=sid, author_id=aid, title=title, selftext=selftext,
+                    s, id=it["id"], subreddit_id=sid, author_id=aid, market=market, title=title, selftext=selftext,
                     url=None if is_self else it.get("url"), permalink=it.get("permalink", ""),
                     flair=it.get("link_flair_text"), is_self=is_self, created_utc=created,
                     score=int(it.get("score", 0) or 0), upvote_ratio=float(it.get("upvote_ratio", 0) or 0),
@@ -103,6 +108,84 @@ def scrape(days: int = 3, limit_per: int = 300) -> dict:
             print(f"  r/{name}: {len(items)} 帖")
 
     print(f"[scrape] 完成 {stats}")
+    return stats
+
+
+# ----------------------------- A 股 / 中国资产 关键词过滤扫描 -----------------------------
+# 英文 Reddit 无活跃的沪深 A 股专版（r/AShares 等已停更），A 股讨论零散分布在综合中国社区。
+# 故扫描这些综合版块，只保留「提及中概/港股/A 股标的 或 命中 A 股市场关键词」的帖（market=cn,
+# tracked=False 不进侧栏）。这是把真实 A 股内容引入站点的主要途径（量天然较小，是 Reddit 的客观限制）。
+CN_SOURCE_SUBS = ["Sino", "China", "shanghai", "EmergingMarkets", "ChinaStockMarket", "AShares"]
+
+ASHARE_KEYWORDS = re.compile(
+    r"\b(a[-\s]?shares?|shanghai composite|sse composite|sse index|csi\s?300|csi\s?500|"
+    r"shenzhen (?:component|index)|star market|sci-?tech innovation board|chinext|"
+    r"stock connect|northbound|southbound|mainland china stock|onshore china|"
+    r"shanghai stock exchange|shenzhen stock exchange)\b"
+    r"|沪深|A股|上证|深证|科创板|创业板|上交所|深交所|北向资金",
+    re.I,
+)
+
+
+def scrape_china_filtered(days: int = 30, limit_per: int = 300, subs: list[str] | None = None) -> dict:
+    """扫描综合中国社区，只保留与中国股市（含 A 股）相关的帖，写为 market=cn / tracked=False。"""
+    from sqlalchemy import select
+    from ..common.models import TickerMeta
+
+    source_subs = subs or CN_SOURCE_SUBS
+    stats = {"scanned": 0, "kept": 0, "ashare_kw": 0}
+
+    with session_scope() as s:
+        tdict = load_ticker_dict(s)
+        if not tdict.tickers:
+            raise RuntimeError("ticker_meta 为空，请先 `make seed` + `make seed-cn`。")
+        from .ticker_extract import extract_mentions
+        cn_tickers = {
+            t for (t,) in s.execute(select(TickerMeta.ticker).where(TickerMeta.market == "cn")).all()
+        }
+
+        for name in source_subs:
+            items = fetch_subreddit(name, days, limit_per)
+            stats["scanned"] += len(items)
+            sid = None
+            kept = 0
+            for it in items:
+                title = it.get("title") or ""
+                selftext = it.get("selftext") or ""
+                if selftext in ("[removed]", "[deleted]"):
+                    selftext = ""
+                text = f"{title}\n{selftext}"
+                ms = extract_mentions(text, tdict)
+                has_cn = any(m["ticker"] in cn_tickers for m in ms)
+                kw = bool(ASHARE_KEYWORDS.search(text))
+                if not (has_cn or kw):
+                    continue
+                if kw:
+                    stats["ashare_kw"] += 1
+                if sid is None:  # 首次命中才登记该来源版块（tracked=False，不进侧栏）
+                    subscribers = int((items[0].get("subreddit_subscribers") if items else 0) or 0)
+                    sid = upsert_subreddit(s, name, display_name=name, subscribers=subscribers,
+                                           market="cn", tracked=False)
+                author = it.get("author")
+                aid = upsert_author(s, author if author not in (None, "[deleted]") else None)
+                created = dt.datetime.utcfromtimestamp(it["created_utc"])
+                is_self = bool(it.get("is_self", True))
+                upsert_post(
+                    s, id=it["id"], subreddit_id=sid, author_id=aid, market="cn",
+                    title=title, selftext=selftext,
+                    url=None if is_self else it.get("url"), permalink=it.get("permalink", ""),
+                    flair=it.get("link_flair_text"), is_self=is_self, created_utc=created,
+                    score=int(it.get("score", 0) or 0), upvote_ratio=float(it.get("upvote_ratio", 0) or 0),
+                    num_comments=int(it.get("num_comments", 0) or 0),
+                    total_awards=int(it.get("total_awards_received", 0) or 0),
+                )
+                store_mentions(s, tdict, item_id=it["id"], item_type="post",
+                               text=text, subreddit_id=sid, author_id=aid, created_utc=created)
+                kept += 1
+            stats["kept"] += kept
+            print(f"  r/{name}: 命中 {kept}/{len(items)} 帖（与中国股市相关）")
+
+    print(f"[scrape-china] 完成 {stats}")
     return stats
 
 

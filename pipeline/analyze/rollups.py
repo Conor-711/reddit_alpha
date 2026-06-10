@@ -25,7 +25,7 @@ def _hour_floor(ts: dt.datetime) -> dt.datetime:
     return ts.replace(minute=0, second=0, microsecond=0)
 
 
-def run_rollups() -> int:
+def run_rollups(market: str = "us") -> int:
     weights = _sub_weights()
     now = data_now()
     window_h = settings.mindshare_window_hours
@@ -43,7 +43,8 @@ def run_rollups() -> int:
             .join(Post, Post.id == Mention.item_id)
             .outerjoin(ItemAnalysis, and_(ItemAnalysis.item_id == Mention.item_id,
                                           ItemAnalysis.item_type == "post"))
-            .where(Mention.item_type == "post", Mention.created_utc >= cutoff)
+            .where(Mention.item_type == "post", Mention.created_utc >= cutoff,
+                   Post.market == market)
         ).all()
 
         # ---------- window 聚合 ----------
@@ -72,10 +73,11 @@ def run_rollups() -> int:
 
         total_w = sum(d["wm"] for d in win.values()) or 1.0
 
-        s.execute(delete(TickerRollup).where(TickerRollup.bucket == "window"))
+        s.execute(delete(TickerRollup).where(TickerRollup.bucket == "window",
+                                             TickerRollup.market == market))
         for tk, d in win.items():
             s.add(TickerRollup(
-                ticker=tk, bucket="window", bucket_ts=now,
+                ticker=tk, market=market, bucket="window", bucket_ts=now,
                 mention_count=d["mc"], weighted_mentions=round(d["wm"], 3),
                 engagement_sum=d["eng"], unique_authors=len(d["authors"]),
                 post_count=len(d["posts"]), mindshare_pct=round(d["wm"] / total_w * 100, 2),
@@ -97,10 +99,11 @@ def run_rollups() -> int:
                 d["ssum"] += sent
                 d["sn"] += 1
 
-        s.execute(delete(TickerRollup).where(TickerRollup.bucket == "hour"))
+        s.execute(delete(TickerRollup).where(TickerRollup.bucket == "hour",
+                                             TickerRollup.market == market))
         for (tk, hts), d in hourly.items():
             s.add(TickerRollup(
-                ticker=tk, bucket="hour", bucket_ts=hts,
+                ticker=tk, market=market, bucket="hour", bucket_ts=hts,
                 mention_count=d["mc"], weighted_mentions=round(d["wm"], 3),
                 engagement_sum=d["eng"], unique_authors=0, post_count=len(d["posts"]),
                 mindshare_pct=0.0,
@@ -109,7 +112,7 @@ def run_rollups() -> int:
             ))
 
         nwin = len(win)
-    print(f"[rollup] window 内 {nwin} 个 ticker，mindshare 已归一化（合计≈100%）。")
+    print(f"[rollup] ({market}) window 内 {nwin} 个 ticker，mindshare 已归一化（合计≈100%）。")
     return nwin
 
 

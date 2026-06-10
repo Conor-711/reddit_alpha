@@ -7,7 +7,7 @@ import { IconUpvote, IconDownvote, IconComment } from "./icons";
 import { timeAgo, fmtCompact } from "@/lib/format";
 import type { FeedRow } from "@/lib/queries";
 
-export function FeedCard({ p }: { p: FeedRow }) {
+export function FeedCard({ p, tickerBase = "/ticker" }: { p: FeedRow; tickerBase?: string }) {
   const { lang, dict } = useLocale();
   const isZh = lang === "zh";
   const title = isZh && p.title_zh ? p.title_zh : p.title;
@@ -53,7 +53,7 @@ export function FeedCard({ p }: { p: FeedRow }) {
           {p.quality >= 0.7 && <span className="text-[11px] font-bold metal-text m-gold">{dict.common.highSignal}</span>}
           {(p.tickers.length > 0 || p.themes.length > 0) && <span className="w-px h-3.5 bg-line mx-0.5" />}
           {p.tickers.slice(0, 5).map((t) => (
-            <TickerChip key={t.ticker} ticker={t.ticker} size="xs" />
+            <TickerChip key={t.ticker} ticker={t.ticker} size="xs" base={tickerBase} />
           ))}
           {p.themes.slice(0, 2).map((t) => (
             <ThemeTag key={t}>{t}</ThemeTag>

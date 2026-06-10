@@ -17,7 +17,7 @@ const GLASS: React.CSSProperties = {
 
 // 首页头牌：过去 24 小时 Reddit 社区含金量最高的 3 条 Alpha。
 // 整个模块以 Reddit 专属橙红 (#FF4500) 为主题色，置于首页最上方、视觉最强。
-export function TodaysAlpha({ alphas }: { alphas: AlphaRow[] }) {
+export function TodaysAlpha({ alphas, tickerBase = "/ticker" }: { alphas: AlphaRow[]; tickerBase?: string }) {
   const { lang, dict } = useLocale();
   const t = dict.dashboard;
   if (!alphas.length) return null;
@@ -94,7 +94,7 @@ export function TodaysAlpha({ alphas }: { alphas: AlphaRow[] }) {
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                   {a.tickers.slice(0, 3).map((tk) => (
-                    <TickerChip key={tk.ticker} ticker={tk.ticker} size="xs" />
+                    <TickerChip key={tk.ticker} ticker={tk.ticker} size="xs" base={tickerBase} />
                   ))}
                 </div>
                 <SentPill stance={a.stance} className="ml-auto shrink-0" />

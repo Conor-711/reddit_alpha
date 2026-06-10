@@ -4,6 +4,7 @@ import { getCommunities } from "@/lib/queries";
 import { fmtCompact } from "@/lib/format";
 import { RedditMark } from "./reddit";
 import { CommunityIcon } from "./CommunityIcon";
+import { IconChevron } from "./icons";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import type { Locale, Dictionary } from "@/lib/i18n";
@@ -27,11 +28,13 @@ export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <NavLinks />
 
-        <div className="px-3 pb-3">
-          <div className="sb-hide px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-600">
-            {dict.chrome.communities}
-          </div>
-          <div className="space-y-0.5">
+        {/* 追踪社区：可折叠模块（native <details>，静态导出零 JS） */}
+        <details className="group px-3 pb-3" open>
+          <summary className="sb-hide list-none cursor-pointer select-none flex items-center justify-between px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-600 hover:text-neutral-400 transition [&::-webkit-details-marker]:hidden">
+            <span>{dict.chrome.communities}</span>
+            <IconChevron className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="space-y-0.5 mt-1">
             {communities.map((c) => (
               <div key={c.id} className="sb-row flex items-center gap-2.5 px-3 py-1.5 rounded-lg">
                 <CommunityIcon id={c.id} size={20} className="text-[10px]" />
@@ -42,7 +45,7 @@ export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
               </div>
             ))}
           </div>
-        </div>
+        </details>
       </div>
 
       {/* 控制区（侧边栏下半部分）：语言 + 主题切换；折叠时只留主题图标 */}

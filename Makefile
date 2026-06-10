@@ -2,8 +2,8 @@ PY := pipeline/.venv/bin/python
 PIP := pipeline/.venv/bin/pip
 MANAGE := $(PY) -m pipeline.manage
 
-.PHONY: install venv db-init seed sample ingest refresh extract analyze analyze-mock \
-        rollup narratives brief worker daily daily-build demo stats test web-install web-dev clean help
+.PHONY: install venv db-init migrate seed seed-cn sample ingest refresh extract analyze analyze-mock \
+        rollup narratives brief worker daily daily-build cn-backfill demo stats test web-install web-dev clean help
 
 help:
 	@echo "Reddit 版 Kaito Pro — 常用命令"
@@ -18,6 +18,9 @@ help:
 	@echo "  make narratives    AI 叙事聚类     make brief  每日 AI 简报"
 	@echo "  make daily         分析过去 24 小时（一天一次；UTC+8 08:00 跑）"
 	@echo "  make daily-build   分析过去 24h 并重建静态站点（web/out）"
+	@echo "  make migrate       已有库迁移到带 market 维度（幂等）"
+	@echo "  make seed-cn       seed 中概/港股/A 股字典"
+	@echo "  make cn-backfill   回填中概·港股语料（爬30天+AI打标+双market聚合+翻译）"
 	@echo "  make worker        启动调度：每天 UTC+8 08:00 自动跑 daily-build"
 	@echo "  --- Web ---"
 	@echo "  make web-install   安装前端依赖    make web-dev  启动 Next.js"
@@ -34,8 +37,16 @@ install: venv
 db-init:
 	$(MANAGE) db-init
 
+# 把已有库迁移到带 market 维度的新 schema（幂等；源表加列、派生表重建）
+migrate:
+	$(MANAGE) migrate
+
 seed:
 	$(MANAGE) seed-tickers
+
+# seed 中概股 / 港股 / A 股字典（cn_hk_tickers.json → ticker_meta，market=cn）
+seed-cn:
+	$(MANAGE) seed-cn-hk
 
 sample:
 	$(MANAGE) load-sample
@@ -63,11 +74,28 @@ daily-build:
 	$(MANAGE) daily --rebuild
 	@echo "" && echo "✅ 每日分析 + 站点重建完成。本地部署见 make serve 或 server.mjs"
 
+# 一次性回填「中概·港股」语料：迁移 + seed cn 字典 + 爬 30 天 cn 社区 + 抽取 + AI 打标 + 双 market 聚合 + 翻译。
+# 需要 .env 里 QWEN_API_KEY（AI 打标/翻译走通义千问）。完成后 make site 重建即可看到 /cn 页。
+cn-backfill:
+	$(MANAGE) migrate
+	$(MANAGE) seed-cn-hk
+	$(MANAGE) scrape --days 30 --limit 400 --markets cn
+	$(MANAGE) scrape-china --days 45 --limit 300
+	$(MANAGE) scrape-comments --top 400 --per-post 12 --min-comments 4
+	$(MANAGE) analyze --qwen --workers 10
+	$(MANAGE) rollup --market all
+	$(MANAGE) mood --market all
+	$(MANAGE) trending --market all
+	$(MANAGE) narratives --mock --market all
+	-$(PY) -m pipeline.analyze.translate
+	@echo "" && echo "==== 中概·港股回填完成 ====" && $(MANAGE) stats
+
 # 真实数据全流程（Arctic Shift 实时 Reddit 数据 + mock AI；真实 Claude 需 ANTHROPIC_API_KEY）
 real:
 	rm -f data/dev.db data/dev.db-wal data/dev.db-shm
 	$(MANAGE) db-init
 	$(MANAGE) seed-tickers
+	$(MANAGE) seed-cn-hk
 	$(MANAGE) scrape --days 3 --limit 300
 	$(MANAGE) analyze --mock
 	$(MANAGE) rollup
@@ -124,6 +152,7 @@ demo:
 	rm -f data/dev.db data/dev.db-wal data/dev.db-shm
 	$(MANAGE) db-init
 	$(MANAGE) seed-tickers --fallback
+	$(MANAGE) seed-cn-hk
 	$(MANAGE) load-sample
 	$(MANAGE) analyze --mock
 	$(MANAGE) rollup

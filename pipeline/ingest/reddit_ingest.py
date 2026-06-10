@@ -16,9 +16,11 @@ from .ticker_extract import TickerDict, extract_mentions, load_ticker_dict
 
 
 # ----------------------------- upsert 助手（被 sample_loader 复用）-----------------------------
-def upsert_subreddit(s, name: str, display_name: str = "", subscribers: int = 0) -> str:
+def upsert_subreddit(s, name: str, display_name: str = "", subscribers: int = 0,
+                     market: str = "us", tracked: bool = True) -> str:
     sid = name.lower()
-    s.merge(Subreddit(id=sid, display_name=display_name or name, subscribers=subscribers))
+    s.merge(Subreddit(id=sid, display_name=display_name or name, subscribers=subscribers,
+                      market=market, tracked=tracked))
     return sid
 
 
@@ -35,9 +37,10 @@ def upsert_author(s, username: str | None, created_utc: dt.datetime | None = Non
 
 
 def upsert_post(s, *, id, subreddit_id, author_id, title, selftext, url, permalink,
-                flair, is_self, created_utc, score, upvote_ratio, num_comments, total_awards):
+                flair, is_self, created_utc, score, upvote_ratio, num_comments, total_awards,
+                market: str = "us"):
     s.merge(Post(
-        id=id, subreddit_id=subreddit_id, author_id=author_id, title=title,
+        id=id, subreddit_id=subreddit_id, author_id=author_id, market=market, title=title,
         selftext=selftext or "", url=url, permalink=permalink, flair=flair,
         is_self=is_self, created_utc=created_utc, score=score, upvote_ratio=upvote_ratio,
         num_comments=num_comments, total_awards=total_awards,
@@ -80,9 +83,10 @@ def ingest_once(limit: int | None = None, with_comments: bool = True) -> dict:
 
         for entry in subs:
             name = entry["name"]
+            market = entry.get("market", "us")
             sr = reddit.subreddit(name)
             sid = upsert_subreddit(s, name, display_name=str(getattr(sr, "title", name)),
-                                   subscribers=int(getattr(sr, "subscribers", 0) or 0))
+                                   subscribers=int(getattr(sr, "subscribers", 0) or 0), market=market)
             stats["subreddits"] += 1
 
             seen: set[str] = set()
@@ -98,7 +102,7 @@ def ingest_once(limit: int | None = None, with_comments: bool = True) -> dict:
                     )
                     created = dt.datetime.utcfromtimestamp(sub.created_utc)
                     upsert_post(
-                        s, id=sub.id, subreddit_id=sid, author_id=author_id,
+                        s, id=sub.id, subreddit_id=sid, author_id=author_id, market=market,
                         title=sub.title or "", selftext=sub.selftext or "",
                         url=None if sub.is_self else sub.url, permalink=sub.permalink,
                         flair=sub.link_flair_text, is_self=bool(sub.is_self),

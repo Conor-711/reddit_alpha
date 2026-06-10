@@ -22,7 +22,7 @@ def mood_label(m: float) -> str:
     return "极度贪婪"
 
 
-def run_market_mood() -> dict:
+def run_market_mood(market: str = "us") -> dict:
     now = data_now()
     cutoff = now - dt.timedelta(hours=settings.mindshare_window_hours)
 
@@ -30,7 +30,8 @@ def run_market_mood() -> dict:
         rows = s.execute(
             select(ItemAnalysis.stance, ItemAnalysis.sentiment_score)
             .join(Post, Post.id == ItemAnalysis.item_id)
-            .where(ItemAnalysis.item_type == "post", Post.created_utc >= cutoff)
+            .where(ItemAnalysis.item_type == "post", Post.created_utc >= cutoff,
+                   Post.market == market)
         ).all()
         total = len(rows)
         bull = sum(1 for st, _ in rows if st == "bull")
@@ -40,17 +41,20 @@ def run_market_mood() -> dict:
 
         total_mentions = s.execute(
             select(func.count()).select_from(Mention)
-            .where(Mention.item_type == "post", Mention.created_utc >= cutoff)
+            .join(Post, Post.id == Mention.item_id)
+            .where(Mention.item_type == "post", Mention.created_utc >= cutoff,
+                   Post.market == market)
         ).scalar_one()
 
         pct = lambda x: round(x / total * 100, 1) if total else 0.0
-        s.execute(delete(MarketMood).where(MarketMood.bucket == "window"))
+        s.execute(delete(MarketMood).where(MarketMood.bucket == "window",
+                                           MarketMood.market == market))
         s.add(MarketMood(
-            bucket="window", bucket_ts=now, mood_score=mood,
+            market=market, bucket="window", bucket_ts=now, mood_score=mood,
             bull_pct=pct(bull), bear_pct=pct(bear), neutral_pct=pct(neu),
             total_mentions=int(total_mentions), total_posts=total, label=mood_label(mood),
         ))
-    out = {"mood": mood, "label": mood_label(mood), "bull": bull, "bear": bear, "neutral": neu, "posts": total}
+    out = {"market": market, "mood": mood, "label": mood_label(mood), "bull": bull, "bear": bear, "neutral": neu, "posts": total}
     print(f"[mood] {out}")
     return out
 

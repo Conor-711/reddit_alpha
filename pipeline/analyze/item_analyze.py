@@ -129,28 +129,79 @@ def analyze_claude(post: Post, tickers: list[dict]) -> dict:
 
 
 # ----------------------------- 真实 通义千问（双语：英文 + 中文） -----------------------------
-SYSTEM_QWEN = """你是专业的美股社媒舆情分析师。仔细阅读一条 Reddit 财经帖子，给出严谨的结构化分析。只输出一个 JSON 对象（不要任何额外文字），字段如下，全部必填：
+# 关键架构：多空论据**按标的归属**（per-ticker）。一条帖子常同时谈多只股票，
+# 「A 抢 B 的份额」对 A 是利多、对 B 是利空——绝不能把它同时塞进两只股票的看多列。
+# 因此每个 ticker 自带 stance + 仅属于它的 bull/bear 论据，ticker 详情页只取归属于该标的的论点。
+SYSTEM_QWEN = """你是专业的美股社媒舆情分析师。仔细阅读一条 Reddit 财经帖子，给出严谨、逻辑自洽的结构化分析。只输出一个 JSON 对象（不要任何额外文字），字段如下，全部必填：
 - sentiment_label: "bullish" | "bearish" | "neutral"
 - sentiment_score: -1.0~1.0 的数字（作者整体情绪方向与强度）
-- stance: "bull" | "bear" | "neutral"
+- stance: "bull" | "bear" | "neutral"（对帖子**主要标的**的整体态度）
 - quality_score: 0~1（有数据/逻辑的深度 DD = 高；情绪宣泄 / meme / 段子 / 钓鱼 = 低）
 - themes: 从下列固定列表里挑 0~4 个最贴切的标签，原样照抄："AI 资本开支","GLP-1 减肥药","降息与宏观","AI 电力 / 核能","比特币代理","逼空 / Meme","财报季","半导体","红利收息","电动车","价值 / 回购"
 - title_zh: 帖子标题的简体中文翻译（通顺自然，保留 ticker/$代码/专有名词）
 - tldr: 一句英文摘要，<=140 字符，概括帖子主旨
 - tldr_zh: tldr 的简体中文
-- bull_points: 英文字符串数组，最多 3 条。**用你自己的话提炼真正站得住脚的看多论据**（不是摘抄原句；若帖子没有看多理由就给 []）
-- bear_points: 英文字符串数组，最多 3 条，看空论据（同上）
-- bull_points_zh: 与 bull_points 一一对应的简体中文（长度必须相同）
-- bear_points_zh: 与 bear_points 一一对应的简体中文（长度必须相同）
-- tickers: [{"ticker": 大写股票代码, "relevance": 0~1}]，仅保留与本帖真正相关的标的
-分析要点：① 读懂 WSB 黑话与反讽——moon/tendies/printing/rip=看多；bag/rope/guh/drilling=看空；用调侃语气说"某股要暴涨/IPO 稳赚/人人都在买"往往是在反讽=看空。② bull/bear 必须是真实、可成立的投资逻辑，玩笑或纯情绪帖应给低 quality_score 且对应方向可为空数组。③ 严格只输出 JSON。"""
+- bull_points / bear_points: 英文字符串数组（各≤3），帖子**整体**层面的看多/看空论据；bull_points_zh / bear_points_zh 为一一对应中文（长度必须相同）。无则给 []。
+- tickers: 数组，每个元素描述本帖与**某一只股票**的关系，只保留真正相关的标的，结构：
+  {
+    "ticker": 大写股票代码,
+    "relevance": 0~1（与本帖相关度）,
+    "stance": "bull" | "bear" | "neutral"（本帖对**这只股票**的态度，可与整体 stance 不同）,
+    "bull_points": [英文，≤3，**只关于这只股票**的看多论据，用你自己的话提炼],
+    "bull_points_zh": [与上一一对应的中文，长度必须相同],
+    "bear_points": [英文，≤3，**只关于这只股票**的看空论据],
+    "bear_points_zh": [与上一一对应的中文，长度必须相同]
+  }
+
+【最重要的归属规则——必须严格遵守】
+① 每一条多空论据都必须归属到它**真正讨论的那一只**股票，再放进该 ticker 的 bull_points/bear_points。
+② 涉及竞争/替代时方向相反：若论据是「X 公司抢走 Y 公司的市场份额 / 在某领域领先于 Y」，那它是 **X 的看多** 且同时是 **Y 的看空**——绝不能把它当成 Y 的看多，也不能把它放进与该论据无关的标的下。
+③ 某只股票若在本帖没有对应方向的真实论据，对应数组就留空 []；不要为了凑数把别的股票的论据搬过来。
+④ 一只股票的 stance 必须与它自己的 bull_points/bear_points 一致（看多论据强→bull，看空论据强→bear，互相抵消或无实质论据→neutral）。
+
+其它要点：⑤ 读懂 WSB 黑话与反讽——moon/tendies/printing/rip=看多；bag/rope/guh/drilling=看空；用调侃语气说"某股要暴涨/IPO 稳赚/人人都在买"往往是反讽=看空。⑥ 论据必须是真实、可成立的投资逻辑；玩笑或纯情绪帖给低 quality_score 且对应数组可为空。⑦ 严格只输出 JSON。"""
+
+
+def _norm_ticker_entries(raw, fallback: list[dict]) -> list[dict]:
+    """规范化 per-ticker 分析：保证 stance + 等长的 bull/bear(_zh) 数组。"""
+    out: list[dict] = []
+    if not isinstance(raw, list):
+        raw = []
+    for t in raw:
+        if not isinstance(t, dict) or not t.get("ticker"):
+            continue
+        def _a(k: str) -> list:
+            v = t.get(k)
+            return [str(x) for x in v][:3] if isinstance(v, list) else []
+        bull, bull_zh = _a("bull_points"), _a("bull_points_zh")
+        bear, bear_zh = _a("bear_points"), _a("bear_points_zh")
+        # 对齐中英长度（中文缺失则补空，避免错位）
+        bull_zh = (bull_zh + [""] * len(bull))[: len(bull)]
+        bear_zh = (bear_zh + [""] * len(bear))[: len(bear)]
+        stance = t.get("stance") if t.get("stance") in ("bull", "bear", "neutral") else "neutral"
+        try:
+            rel = round(float(t.get("relevance", 0.5) or 0.5), 2)
+        except (TypeError, ValueError):
+            rel = 0.5
+        out.append({
+            "ticker": str(t["ticker"]).upper(),
+            "relevance": rel,
+            "stance": stance,
+            "bull_points": bull, "bull_points_zh": bull_zh,
+            "bear_points": bear, "bear_points_zh": bear_zh,
+        })
+    if not out:  # 模型没给结构化 ticker → 退回 mention 候选（无 per-ticker 论据）
+        out = [{"ticker": t["ticker"], "relevance": t["relevance"], "stance": "neutral",
+                "bull_points": [], "bull_points_zh": [], "bear_points": [], "bear_points_zh": []}
+               for t in fallback]
+    return out
 
 
 def analyze_qwen(post: Post, tickers: list[dict]) -> dict:
     from ..common.qwen import messages_json
 
     # 投资分析：开启思考模式（更强推理）。
-    data = messages_json(SYSTEM_QWEN, build_user(post, tickers), max_tokens=2200, enable_thinking=True) or {}
+    data = messages_json(SYSTEM_QWEN, build_user(post, tickers), max_tokens=2600, enable_thinking=True) or {}
 
     def _arr(k: str) -> list:
         v = data.get(k)
@@ -169,7 +220,7 @@ def analyze_qwen(post: Post, tickers: list[dict]) -> dict:
         "bear_points": _arr("bear_points")[:3],
         "bull_points_zh": _arr("bull_points_zh")[:3],
         "bear_points_zh": _arr("bear_points_zh")[:3],
-        "tickers": data.get("tickers") or [{"ticker": t["ticker"], "relevance": t["relevance"]} for t in tickers],
+        "tickers": _norm_ticker_entries(data.get("tickers"), tickers),
         "model": "qwen:" + settings.qwen_model,
     }
 
@@ -180,13 +231,27 @@ def _sub_weights() -> dict[str, float]:
         return {e["name"].lower(): float(e.get("weight", 1.0)) for e in yaml.safe_load(f)["subreddits"]}
 
 
+def _multi_ticker_ids() -> set[str]:
+    """返回提到 ≥2 个 ticker 的帖子 id —— 唯一可能发生多空论据错配的子集。"""
+    with session_scope() as s:
+        rows = s.execute(select(Mention.item_id, Mention.ticker).where(
+            Mention.item_type == "post")).all()
+    by: dict[str, set] = {}
+    for iid, tk in rows:
+        by.setdefault(iid, set()).add(tk)
+    return {iid for iid, tks in by.items() if len(tks) >= 2}
+
+
 def run_analyze(mock: bool = False, qwen: bool = False, limit: int | None = None,
-                only_new: bool = True, workers: int = 8, force: bool = False) -> int:
+                only_new: bool = True, workers: int = 8, force: bool = False,
+                only_ids: set[str] | None = None) -> int:
     weights = _sub_weights()
 
     # 1) 一次性读出待分析帖 + 候选 ticker，detach 后并发分析（sqlite 写仍串行）。
     with session_scope() as s:
-        if force:
+        if only_ids is not None:
+            done = set()  # 定向重跑：忽略已分析判断，强制覆盖指定 id
+        elif force:
             done = set()  # 强制全量重跑（如开启思考模式重新分析）
         elif qwen:
             # qwen 模式可断点续跑：跳过已用 qwen 分析过的帖（其余 mock 结果会被覆盖）。
@@ -211,6 +276,8 @@ def run_analyze(mock: bool = False, qwen: bool = False, limit: int | None = None
 
         work = []
         for p in posts:
+            if only_ids is not None and p.id not in only_ids:
+                continue
             if p.id in done:
                 continue
             work.append((p, ment.get(p.id, [])))

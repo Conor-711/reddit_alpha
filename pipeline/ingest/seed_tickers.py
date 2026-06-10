@@ -42,6 +42,33 @@ def load_fallback() -> list[dict]:
         return json.load(f)
 
 
+def seed_cn_hk() -> int:
+    """把策划的中概/港股/A 股字典（cn_hk_tickers.json）merge 进 ticker_meta。
+
+    含 market='cn'、exchange、丰富 aliases（英文/拼音/中文/数字码），供「中概·港股」看板抽取。
+    不动 SEC 美股全量；与之并存（BABA 等 ADR 会被这里的中文名/别名覆盖增强）。
+    """
+    path = PKG_DATA_DIR / "cn_hk_tickers.json"
+    with open(path, "r", encoding="utf-8") as f:
+        rows = json.load(f)
+    n = 0
+    with session_scope() as s:
+        for r in rows:
+            s.merge(TickerMeta(
+                ticker=r["ticker"].upper(),
+                company_name=r.get("name", ""),
+                cik=None,
+                exchange=r.get("exchange"),
+                sector=r.get("sector"),
+                market=r.get("market", "cn"),
+                is_active=True,
+                aliases=r.get("aliases"),
+            ))
+            n += 1
+    print(f"[seed-cn-hk] 写入/更新中概·港股 ticker_meta：{n} 行。")
+    return n
+
+
 def seed_tickers(use_fallback: bool = False) -> int:
     rows: list[dict] = []
     source = "fallback"

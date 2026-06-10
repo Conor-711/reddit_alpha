@@ -50,6 +50,61 @@ def drop_all() -> None:
     Base.metadata.drop_all(engine)
 
 
+# 给「市场维度」做的幂等迁移：源表加 market 列（保留数据），派生/聚合表整表重建。
+# 派生表（rollup/mood/trending/narratives）每次跑都全量重算，可安全 DROP；
+# 它们的唯一约束从「不含 market」改成「含 market」，SQLite 无法 ALTER 约束，只能重建。
+_ADD_COLUMNS = [
+    ("subreddits", "market", "VARCHAR(8) DEFAULT 'us'"),
+    ("subreddits", "tracked", "BOOLEAN DEFAULT 1"),
+    ("posts", "market", "VARCHAR(8) DEFAULT 'us'"),
+    ("ticker_meta", "market", "VARCHAR(8)"),  # nullable：仅标记策划的中概/港股宇宙
+]
+# 这些派生表新增了 market 列：缺列即视为旧结构 → 整表重建。
+_DERIVED_NEEDS_MARKET = ["ticker_rollup", "market_mood", "trending", "narratives"]
+# narratives 重建后，这两张子表的 narrative_id 会变成孤儿 → 一并重建。
+_DERIVED_CHILDREN = ["narrative_tickers", "narrative_posts"]
+
+
+def _existing_columns(conn, table: str) -> set[str]:
+    from sqlalchemy import text
+    try:
+        rows = conn.exec_driver_sql(f"PRAGMA table_info({table})").fetchall()
+    except Exception:
+        return set()
+    return {r[1] for r in rows}
+
+
+def migrate_market() -> None:
+    """把已有库迁移到带 market 维度的新 schema（幂等，可重复跑）。"""
+    if engine.dialect.name != "sqlite":
+        print("[migrate] 非 sqlite，直接 create_all（生产请用正式迁移工具）。")
+        init_db()
+        return
+    from sqlalchemy import inspect
+    insp = inspect(engine)
+    existing_tables = set(insp.get_table_names())
+    with engine.begin() as conn:
+        # 1) 源表加 market 列（保留数据）
+        for table, col, decl in _ADD_COLUMNS:
+            if table in existing_tables and col not in _existing_columns(conn, table):
+                conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+                print(f"[migrate] {table} += {col}")
+        # 2) 派生表：缺 market 列 → 整表重建（约束从「不含 market」改成「含 market」，SQLite 只能重建）
+        rebuilt = False
+        for table in _DERIVED_NEEDS_MARKET:
+            if table in existing_tables and "market" not in _existing_columns(conn, table):
+                conn.exec_driver_sql(f"DROP TABLE IF EXISTS {table}")
+                print(f"[migrate] 重建派生表 {table}")
+                rebuilt = True
+        # narratives 被重建 → 其子表的 narrative_id 失效，一并重建
+        if "narratives" not in existing_tables or "market" not in _existing_columns(conn, "narratives"):
+            for table in _DERIVED_CHILDREN:
+                conn.exec_driver_sql(f"DROP TABLE IF EXISTS {table}")
+    # 3) 重新建表（含新列/新约束/加宽的 ticker 列）
+    init_db()
+    print("[migrate] 完成。")
+
+
 @contextmanager
 def session_scope() -> Session:
     """事务会话上下文：正常提交，异常回滚。"""
