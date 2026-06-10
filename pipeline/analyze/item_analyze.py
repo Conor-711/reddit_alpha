@@ -198,10 +198,10 @@ def _norm_ticker_entries(raw, fallback: list[dict]) -> list[dict]:
 
 
 def analyze_qwen(post: Post, tickers: list[dict]) -> dict:
-    from ..common.qwen import messages_json
+    # 高档任务：逐帖投资打标 → 千问思考模式（更强推理），经统一档位路由层调度。
+    from ..common.llm import HIGH, messages_json
 
-    # 投资分析：开启思考模式（更强推理）。
-    data = messages_json(SYSTEM_QWEN, build_user(post, tickers), max_tokens=2600, enable_thinking=True) or {}
+    data = messages_json(HIGH, SYSTEM_QWEN, build_user(post, tickers), max_tokens=2600, enable_thinking=True) or {}
 
     def _arr(k: str) -> list:
         v = data.get(k)

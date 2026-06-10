@@ -17,7 +17,7 @@ import sqlite3
 from typing import Iterable
 
 from ..common.config import settings
-from ..common.qwen import messages_json
+from ..common.llm import LOW, messages_json
 
 
 def _db_path() -> str:
@@ -50,8 +50,8 @@ def translate_texts(texts: list[str], model: str, max_tokens: int = 4000) -> lis
         return []
     payload = {"items": [{"i": i, "t": t} for i, t in enumerate(texts)]}
     user = "翻译下面 JSON 中 items 的每个 t 为简体中文：\n" + json.dumps(payload, ensure_ascii=False)
-    # 普通翻译 → 不开思考模式（更快更省）。
-    data = messages_json(SYSTEM, user, max_tokens=max_tokens, enable_thinking=False) or {}
+    # 低档任务：批量翻译 → DeepSeek deepseek-v4-flash（经统一档位路由层；model 形参保留兼容，实际按档位路由）。
+    data = messages_json(LOW, SYSTEM, user, max_tokens=max_tokens) or {}
     res = [""] * len(texts)
     for it in data.get("items", []):
         try:

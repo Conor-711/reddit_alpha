@@ -20,7 +20,6 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: "usSection",
     items: [
       { href: "/dashboard", key: "dashboard", Icon: IconGrid },
-      { href: "/search", key: "search", Icon: IconSearch },
       { href: "/leaderboard", key: "leaderboard", Icon: IconTrophy },
     ],
   },
@@ -43,8 +42,11 @@ export const NAV_MOBILE: NavItem[] = [
 ];
 
 // 高亮判定：看板入口在其个股页(/ticker、/cn/ticker)上也保持高亮；其余精确/前缀匹配。
+// 注意：next.config 开了 trailingSlash:true，usePathname() 会带尾斜杠（如 /dashboard/），
+// 故先归一化去尾斜杠，否则 /dashboard、/cn 这类精确匹配会失效（侧边栏不高亮）。
 export function navActive(rest: string, href: string): boolean {
-  if (href === "/dashboard") return rest === "/dashboard" || rest === "/" || rest.startsWith("/ticker");
-  if (href === "/cn") return rest === "/cn" || rest.startsWith("/cn/ticker");
-  return rest === href || rest.startsWith(href + "/");
+  const r = rest.length > 1 ? rest.replace(/\/+$/, "") : rest;
+  if (href === "/dashboard") return r === "/dashboard" || r === "/" || r.startsWith("/ticker");
+  if (href === "/cn") return r === "/cn" || r.startsWith("/cn/ticker");
+  return r === href || r.startsWith(href + "/");
 }

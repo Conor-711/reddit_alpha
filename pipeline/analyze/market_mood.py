@@ -23,7 +23,7 @@ def mood_label(m: float) -> str:
 
 
 def run_market_mood(market: str = "us") -> dict:
-    now = data_now()
+    now = data_now(market)  # 按 market 各自锚定最新帖，避免另一市场更新时把本市场挤出 24h 窗口
     cutoff = now - dt.timedelta(hours=settings.mindshare_window_hours)
 
     with session_scope() as s:

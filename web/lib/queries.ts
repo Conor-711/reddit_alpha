@@ -23,6 +23,9 @@ export interface NarrativeRow {
   id: number; slug: string; name: string; summary: string; post_count: number;
   ticker_count: number; heat: number; tickers: { ticker: string; weight: number }[];
 }
+export interface SentLeader {
+  ticker: string; name: string; sentiment: number; mentions: number; bull: number; bear: number;
+}
 
 export function getMeta(market = "us") {
   const m = get<{ ts: string }>(
@@ -36,6 +39,30 @@ export function getMeta(market = "us") {
     market, market, market
   );
   return { lastUpdated: m?.ts ?? null, ...(counts ?? { posts: 0, mentions: 0, tickers: 0 }) };
+}
+
+// 首页「数据可信度」模块用：全站真实数据规模（不分 market），每天 08:00 分析后刷新。
+// 用真实计数（已分析帖子 / 评论 / 提及 / 标的 / 社区 / 作者）增强网站可信度。
+export interface DataStats {
+  posts: number; analyzedPosts: number; comments: number; mentions: number;
+  tickers: number; communities: number; authors: number; lastUpdated: string | null;
+}
+export function getDataStats(): DataStats {
+  const c = get<Omit<DataStats, "lastUpdated">>(
+    `SELECT (SELECT COUNT(*) FROM posts) AS posts,
+            (SELECT COUNT(*) FROM item_analysis WHERE item_type='post') AS analyzedPosts,
+            (SELECT COUNT(*) FROM comments) AS comments,
+            (SELECT COUNT(*) FROM mentions) AS mentions,
+            (SELECT COUNT(DISTINCT ticker) FROM mentions) AS tickers,
+            (SELECT COUNT(*) FROM subreddits WHERE COALESCE(tracked,1)=1) AS communities,
+            (SELECT COUNT(DISTINCT author_id) FROM posts WHERE author_id IS NOT NULL) AS authors`
+  );
+  const upd = get<{ ts: string }>("SELECT MAX(bucket_ts) AS ts FROM market_mood WHERE bucket='window'");
+  return {
+    posts: c?.posts ?? 0, analyzedPosts: c?.analyzedPosts ?? 0, comments: c?.comments ?? 0,
+    mentions: c?.mentions ?? 0, tickers: c?.tickers ?? 0, communities: c?.communities ?? 0,
+    authors: c?.authors ?? 0, lastUpdated: upd?.ts ?? null,
+  };
 }
 
 export function getMarketMood(market = "us"): MoodRow | undefined {
@@ -53,6 +80,24 @@ export function getMindshare(limit = 24, market = "us"): MindRow[] {
       ORDER BY r.mindshare_pct DESC LIMIT ?`,
     market, limit
   );
+}
+
+// 多空风向标：窗口内情绪最强（最看多）与最负（最看空）的标的，过滤样本过少的噪音。
+export function getSentimentLeaders(market = "us", n = 5, minMentions = 2): { bullish: SentLeader[]; bearish: SentLeader[] } {
+  const base =
+    `SELECT r.ticker, COALESCE(tm.company_name,'') AS name, r.sentiment_avg AS sentiment,
+            r.mention_count AS mentions, r.bull_count AS bull, r.bear_count AS bear
+       FROM ticker_rollup r LEFT JOIN ticker_meta tm ON tm.ticker = r.ticker
+      WHERE r.bucket='window' AND r.market=? AND r.mention_count >= ?`;
+  const bullish = all<SentLeader>(
+    base + " AND r.sentiment_avg > 0.05 ORDER BY r.sentiment_avg DESC, r.mention_count DESC LIMIT ?",
+    market, minMentions, n
+  );
+  const bearish = all<SentLeader>(
+    base + " AND r.sentiment_avg < -0.05 ORDER BY r.sentiment_avg ASC, r.mention_count DESC LIMIT ?",
+    market, minMentions, n
+  );
+  return { bullish, bearish };
 }
 
 export function getTreemap(limit = 30, market = "us") {

@@ -4,6 +4,7 @@ import { Topbar } from "@/components/Topbar";
 import { TickerTape } from "@/components/TickerTape";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BookmarkHint } from "@/components/BookmarkHint";
+import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { getDictionary, locales, defaultLocale, isLocale, type Locale } from "@/lib/i18n";
 
@@ -36,6 +37,7 @@ export default function LangLayout({
       </div>
       <ThemeToggle />
       <BookmarkHint />
+      <AnalyticsTracker />
     </LocaleProvider>
   );
 }

@@ -92,12 +92,13 @@ def run_brief(mock: bool = False) -> str:
         model = "mock-brief-0.1"
 
         if not mock:
-            from ..common.claude import messages_text
+            # 中档任务：日报润色 → DeepSeek deepseek-v4-pro（经统一档位路由层）。
+            from ..common.llm import MID, chat, model_label
             system = ("你是专业美股舆情编辑。根据给定事实，写一篇简洁、专业、中立的中文《Reddit 美股舆情日报》"
                       "（markdown，含：市场情绪一句话、最受关注、异动、主导叙事、值得一读的帖子）。"
                       "保留所有原帖链接，不杜撰数据，不构成投资建议。")
-            md = messages_text(system, md, settings.model_brief, max_tokens=1800)
-            model = settings.model_brief
+            md = chat(MID, system, md, max_tokens=1800)
+            model = model_label(MID)
 
         title = f"Reddit 美股舆情日报 · {date}"
         existing = s.execute(select(DailyBrief).where(DailyBrief.brief_date == date)).scalars().first()

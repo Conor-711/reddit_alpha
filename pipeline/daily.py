@@ -53,8 +53,13 @@ def run_daily(rebuild: bool = False) -> None:
     from .ingest.sample_loader import load_sample
 
     started = dt.datetime.now()
-    mock = not settings.has_anthropic
-    print(f"[daily] 开始：过去 {WINDOW_DAYS*24} 小时分析（{'mock AI' if mock else '真实 Claude'}）— {started:%Y-%m-%d %H:%M %z}")
+    use_qwen = settings.has_qwen          # 高档：逐帖投资打标（千问思考模式）
+    mid_mock = not settings.has_deepseek  # 中档：叙事聚类 / 每日简报（DeepSeek deepseek-v4-pro）
+    providers = "+".join(
+        ([f"千问({settings.qwen_model})"] if use_qwen else [])
+        + ([f"DeepSeek({settings.deepseek_model_mid})"] if not mid_mock else [])
+    ) or "mock 启发式"
+    print(f"[daily] 开始：过去 {WINDOW_DAYS*24} 小时分析（{providers}）— {started:%Y-%m-%d %H:%M %z}")
 
     init_db()
 
@@ -69,18 +74,23 @@ def run_daily(rebuild: bool = False) -> None:
         print("[daily] 库内无帖子，载入样本兜底。")
         _safe("load-sample", load_sample)
 
-    # 3) AI 逐帖打标（对全部帖通跑，market 已在帖上） + 按 market 分别聚合
-    _safe("analyze", run_analyze, mock=mock)
+    # 3) 高档：逐帖 AI 打标（有千问→真实思考模式；否则 mock 启发式兜底） + 按 market 分别聚合
+    if use_qwen:
+        _safe("analyze", run_analyze, qwen=True, workers=10)
+    else:
+        _safe("analyze", run_analyze, mock=True)
     for mk in MARKETS:
         _safe(f"rollup[{mk}]", run_rollups, market=mk)
         _safe(f"mood[{mk}]", run_market_mood, market=mk)
         _safe(f"trending[{mk}]", run_trending, market=mk)
-        _safe(f"narratives[{mk}]", run_narratives, mock=mock, market=mk)
-    _safe("brief", run_brief, mock=mock)
+        # 中档：叙事聚类（有 DeepSeek→真实语义聚类；否则 mock 按主题分组）
+        _safe(f"narratives[{mk}]", run_narratives, mock=mid_mock, market=mk)
+    # 中档：每日简报润色
+    _safe("brief", run_brief, mock=mid_mock)
 
-    # 4) 翻译成简体中文（标题/正文/AI 摘要/评论 → *_zh），保证 zh 模式 100% 中文。
-    #    需要 .env 里有 QWEN_API_KEY；缺失则跳过（_safe 兜底）。
-    if os.environ.get("QWEN_API_KEY"):
+    # 4) 低档：翻译成简体中文（标题/正文/AI 摘要/评论 → *_zh），保证 zh 模式 100% 中文。
+    #    走 DeepSeek deepseek-v4-flash；缺 key 则跳过（_safe 兜底）。
+    if settings.has_deepseek:
         from .analyze.translate import run as run_translate
         _safe("translate", run_translate, {"posts", "analysis", "comments"}, None)
 

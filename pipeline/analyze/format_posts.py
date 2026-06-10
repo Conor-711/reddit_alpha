@@ -12,7 +12,7 @@ import os
 import sqlite3
 
 from ..common.config import settings
-from ..common.qwen import chat
+from ..common.llm import MID, chat
 
 
 def _db_path() -> str:
@@ -20,14 +20,6 @@ def _db_path() -> str:
     if url.startswith("sqlite:///"):
         return url[len("sqlite:///"):]
     return os.environ.get("SQLITE_PATH", "data/dev.db")
-
-
-def _model() -> str:
-    return (
-        getattr(settings, "sonnet_model", None)
-        or getattr(settings, "haiku_model", None)
-        or os.environ.get("FORMAT_MODEL", "claude-haiku-4-5")
-    )
 
 
 SYSTEM = (
@@ -43,7 +35,6 @@ SYSTEM = (
 
 def run(limit: int | None, min_len: int):
     c = sqlite3.connect(_db_path())
-    model = _model()
     rows = c.execute(
         "SELECT id, selftext FROM posts "
         "WHERE selftext IS NOT NULL AND length(selftext) >= ? AND (selftext_fmt IS NULL OR selftext_fmt='') "
@@ -51,7 +42,7 @@ def run(limit: int | None, min_len: int):
         (min_len,),
     ).fetchall()
     for pid, selftext in rows:
-        out = chat(SYSTEM, selftext, max_tokens=4000, enable_thinking=False)
+        out = chat(MID, SYSTEM, selftext, max_tokens=4000)
         out = (out or "").strip()
         if out.startswith("```"):
             out = out.strip("`")

@@ -44,12 +44,18 @@ class Settings:
     model_synth: str = os.environ.get("ANTHROPIC_MODEL_SYNTH", "claude-sonnet-4-6")
     model_brief: str = os.environ.get("ANTHROPIC_MODEL_BRIEF", "claude-sonnet-4-6")
 
-    # 通义千问（DashScope, OpenAI 兼容）—— 真实 AI 分析/翻译
+    # 通义千问（DashScope, OpenAI 兼容）—— 高档任务（逐帖投资打标，开思考模式）
     qwen_api_key: str = os.environ.get("QWEN_API_KEY", "")
     qwen_model: str = os.environ.get("QWEN_MODEL", "qwen3.7-plus")
     qwen_base_url: str = os.environ.get(
         "QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"
     )
+
+    # DeepSeek（OpenAI 兼容）—— 低档(flash)/中档(pro)任务
+    deepseek_api_key: str = os.environ.get("DEEPSEEK_API_KEY", "")
+    deepseek_base_url: str = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    deepseek_model_low: str = os.environ.get("DEEPSEEK_MODEL_LOW", "deepseek-v4-flash")
+    deepseek_model_mid: str = os.environ.get("DEEPSEEK_MODEL_MID", "deepseek-v4-pro")
 
     ingest_post_limit: int = field(default_factory=lambda: _int("INGEST_POST_LIMIT", 120))
     ingest_comment_min_score: int = field(
@@ -70,6 +76,10 @@ class Settings:
     @property
     def has_qwen(self) -> bool:
         return bool(self.qwen_api_key)
+
+    @property
+    def has_deepseek(self) -> bool:
+        return bool(self.deepseek_api_key)
 
 
 @lru_cache(maxsize=1)

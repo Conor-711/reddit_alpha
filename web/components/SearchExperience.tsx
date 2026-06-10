@@ -7,6 +7,7 @@ import { useLocale } from "./i18n/LocaleProvider";
 import { withLang } from "@/lib/i18n";
 import { IconSearch, IconArrow } from "./icons";
 import { recordSearch } from "@/lib/searchCounts";
+import { track } from "@/lib/analytics";
 import { SearchLeaderboard, type HeatItem } from "./SearchLeaderboard";
 
 export interface ValidTicker { ticker: string; name: string; posts: number }
@@ -44,8 +45,10 @@ export function SearchExperience({
     if (!sym) return;
     if (validSet.has(sym)) {
       void recordSearch(sym); // 记一次真实搜索（fire-and-forget）
+      track("search", { lang, ticker: sym, meta: { found: true } });
       router.push(withLang(lang, `${tickerBase}/${encodeURIComponent(sym)}`));
     } else {
+      track("search", { lang, ticker: sym, meta: { found: false } });
       setMissQ(sym); // 跳提示页
     }
   };

@@ -1,13 +1,17 @@
+import type { Metadata } from "next";
 import { LocaleLink } from "@/components/i18n/LocaleLink";
 import { notFound } from "next/navigation";
 import { Panel, SubredditChip, Avatar, SentPill, TickerChip, ThemeTag } from "@/components/ui";
 import { MarkdownLite } from "@/components/MarkdownLite";
 import { Comments } from "@/components/Comments";
-import { TranslateGate } from "@/components/TranslateGate";
+import { TranslateToggle } from "@/components/TranslateToggle";
+import { AdSlot } from "@/components/AdSlot";
+import { ShareBar } from "@/components/ShareBar";
 import { IconUpvote, IconComment, IconDoc } from "@/components/icons";
 import { timeAgo, fmtCompact, fmtInt, REDDIT } from "@/lib/format";
 import { getPostDetail, getAllPostIds } from "@/lib/queries";
 import { getDictionary, isLocale, defaultLocale, type Locale, type Dictionary } from "@/lib/i18n";
+import { SITE_URL, OG_IMAGE } from "@/lib/site";
 
 export const dynamicParams = false;
 
@@ -15,15 +19,37 @@ export function generateStaticParams() {
   return getAllPostIds().map((id) => ({ id }));
 }
 
+// 帖子页独立 OG / Twitter 卡片：分享到社媒展开富预览，带来免费流量。
+export function generateMetadata({ params }: { params: { lang: string; id: string } }): Metadata {
+  const lang: Locale = isLocale(params.lang) ? params.lang : defaultLocale;
+  const d = getPostDetail(params.id);
+  if (!d) return {};
+  const zh = lang === "zh";
+  const rawTitle = (zh && d.post.title_zh) ? d.post.title_zh : d.post.title;
+  const title = `${rawTitle.slice(0, 90)} | redditalpha`;
+  const desc =
+    (zh && d.analysis?.tldr_zh ? d.analysis.tldr_zh : d.analysis?.tldr) ||
+    (zh ? "Reddit 财经社区的真实讨论与 AI 多空提炼。" : "Real discussion and AI-distilled bull/bear takes from Reddit.");
+  const url = `${SITE_URL}/${lang}/post/${params.id}/`;
+  return {
+    title,
+    description: desc,
+    alternates: { canonical: url },
+    openGraph: { title, description: desc, url, siteName: "redditalpha", type: "article", images: [{ url: OG_IMAGE, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title, description: desc, images: [OG_IMAGE] },
+  };
+}
+
 export default function PostPage({ params }: { params: { lang: string; id: string } }) {
   const lang: Locale = isLocale(params.lang) ? params.lang : defaultLocale;
   const t = getDictionary(lang).post;
+  const sh = getDictionary(lang).share;
   const d = getPostDetail(params.id);
   if (!d) notFound();
   const { post, analysis, comments } = d;
   const hasAI = analysis && (analysis.tldr || analysis.bull.length > 0 || analysis.bear.length > 0);
   const isZh = lang === "zh";
-  // 标题 + AI 摘要：直接给中文（免费预览）；正文 / 评论：看广告解锁（TranslateGate）。
+  // 标题 + AI 摘要直接给中文；正文 / 评论用「译文 / 原文」切换按钮（不再看广告解锁）。
   const postTitle = isZh && post.title_zh ? post.title_zh : post.title;
   const aiTldr = isZh && analysis?.tldr_zh ? analysis.tldr_zh : analysis?.tldr ?? "";
   const aiBull = isZh && analysis?.bull_zh.length ? analysis.bull_zh : analysis?.bull ?? [];
@@ -31,7 +57,10 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
-      <LocaleLink href="/dashboard" className="text-xs text-neutral-500 hover:text-reddit transition">{t.back}</LocaleLink>
+      <div className="flex items-center justify-between gap-3">
+        <LocaleLink href="/dashboard" className="text-xs text-neutral-500 hover:text-reddit transition">{t.back}</LocaleLink>
+        <ShareBar path={`/${lang}/post/${post.id}`} text={sh.postText.replace("{s}", postTitle)} ticker={analysis?.tickers?.[0]?.ticker} />
+      </div>
 
       {/* ① 标题 / 帖头 —— masthead（投票轨 + 元信息 + 标题） */}
       <Panel className="p-5 sm:p-6 flex gap-4">
@@ -95,6 +124,9 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
         </Panel>
       )}
 
+      {/* 广告位（原「看广告解锁翻译」的广告改为此处静态占位；可手动关闭） */}
+      <AdSlot variant="banner" slot="post-mid" />
+
       {/* ③ 帖子正文 —— 金色主题（原始素材，阅读区） */}
       {post.selftext ? (
         <Panel className="p-5 sm:p-7">
@@ -104,7 +136,7 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
             </span>
             <span className="font-display font-bold text-cream text-[15px]">{t.bodyTitle}</span>
           </div>
-          <TranslateGate
+          <TranslateToggle
             hasZh={!!post.selftext_zh}
             original={<MarkdownLite md={post.selftext_fmt || post.selftext} size="base" />}
             zh={<MarkdownLite md={post.selftext_zh} size="base" />}
@@ -132,7 +164,7 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
             <span className="ml-auto text-xs text-neutral-500 shrink-0">{comments.length} {t.commentsCount}</span>
           )}
         </div>
-        <TranslateGate
+        <TranslateToggle
           hasZh={comments.some((c) => !!c.body_zh)}
           original={<Comments comments={comments} showZh={false} />}
           zh={<Comments comments={comments} showZh={true} />}

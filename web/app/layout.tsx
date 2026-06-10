@@ -8,7 +8,7 @@ const THEME_INIT = `try{var d=document.documentElement;var t=localStorage.getIte
 export const metadata: Metadata = {
   title: "redditalpha · Reddit 美股舆情情报",
   description:
-    "以专业方式分析 Reddit 财经板块的帖子数据：声量份额、情绪、异动、AI 叙事与每日简报。",
+    "以专业方式分析 Reddit 财经板块的帖子数据：声量份额、情绪、异动、热门叙事与每日简报。",
 };
 
 // 根布局只负责 html/body 外壳与全局 Provider；

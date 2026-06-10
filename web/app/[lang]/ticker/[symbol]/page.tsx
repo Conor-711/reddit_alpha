@@ -1,12 +1,15 @@
+import type { Metadata } from "next";
 import { LocaleLink } from "@/components/i18n/LocaleLink";
 import { notFound } from "next/navigation";
 import { Panel, SectionTitle, Eyebrow, MiniBar, ScoreNum, ThemeTag, Avatar } from "@/components/ui";
 import { Sparkline } from "@/components/charts/Sparkline";
 import { FeedCard } from "@/components/FeedCard";
+import { ShareBar } from "@/components/ShareBar";
 import { SnooMascot } from "@/components/reddit";
 import { fmtInt, fmtPct, fmtCompact, sentTextClass } from "@/lib/format";
 import { getTickerDetail, getAllTickerSymbols } from "@/lib/queries";
 import { getDictionary, isLocale, defaultLocale, type Locale, type Dictionary } from "@/lib/i18n";
+import { SITE_URL, OG_IMAGE } from "@/lib/site";
 
 export const dynamicParams = false;
 
@@ -14,9 +17,31 @@ export function generateStaticParams() {
   return getAllTickerSymbols().map((symbol) => ({ symbol }));
 }
 
+// 每个标的页独立的 OG / Twitter 卡片 —— 分享链接到社媒会展开为富预览，带来免费流量。
+export function generateMetadata({ params }: { params: { lang: string; symbol: string } }): Metadata {
+  const lang: Locale = isLocale(params.lang) ? params.lang : defaultLocale;
+  const symbol = params.symbol.toUpperCase();
+  const d = getTickerDetail(params.symbol);
+  const name = d.meta?.company_name || "";
+  const zh = lang === "zh";
+  const title = `$${symbol}${name ? ` ${name}` : ""} · Reddit ${zh ? "多空情报" : "bull vs bear"} | redditalpha`;
+  const desc = zh
+    ? `${symbol} 在 Reddit 财经社区的声量、情绪与 AI 提炼的多空论点 —— 比大众早一步。`
+    : `${symbol}'s mindshare, sentiment and the AI-distilled bull vs bear case across Reddit's finance communities.`;
+  const url = `${SITE_URL}/${lang}/ticker/${symbol}/`;
+  return {
+    title,
+    description: desc,
+    alternates: { canonical: url },
+    openGraph: { title, description: desc, url, siteName: "redditalpha", type: "website", images: [{ url: OG_IMAGE, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title, description: desc, images: [OG_IMAGE] },
+  };
+}
+
 export default function TickerPage({ params }: { params: { lang: string; symbol: string } }) {
   const lang: Locale = isLocale(params.lang) ? params.lang : defaultLocale;
   const t = getDictionary(lang).ticker;
+  const sh = getDictionary(lang).share;
   const d = getTickerDetail(params.symbol);
   if (!d.meta && !d.roll && d.posts.length === 0) notFound();
 
@@ -35,7 +60,10 @@ export default function TickerPage({ params }: { params: { lang: string; symbol:
 
   return (
     <div className="space-y-4">
-      <LocaleLink href="/dashboard" className="text-xs text-neutral-500 hover:text-reddit transition">{t.back}</LocaleLink>
+      <div className="flex items-center justify-between gap-3">
+        <LocaleLink href="/dashboard" className="text-xs text-neutral-500 hover:text-reddit transition">{t.back}</LocaleLink>
+        <ShareBar path={`/${lang}/ticker/${d.ticker}`} text={sh.tickerText.replace("{s}", `$${d.ticker}`)} ticker={d.ticker} />
+      </div>
 
       {/* ============ 头部 ============ */}
       <Panel className="p-5 sm:p-6">

@@ -123,12 +123,19 @@ def dialect() -> str:
     return engine.dialect.name
 
 
-def data_now():
-    """窗口锚点：取库内最新帖的时间，让「过去 24h」窗口对齐数据本身，
-    而非脚本运行时刻（静态数据集 / 离线分析也能正确出聚合）。无数据则退回 utcnow()。"""
+def data_now(market: str | None = None):
+    """窗口锚点：取（该 market）库内最新帖的时间，让「过去 24h」窗口对齐数据本身，
+    而非脚本运行时刻（静态数据集 / 离线分析也能正确出聚合）。无数据则退回 utcnow()。
+
+    必须按 market 各自锚定：不同市场的数据新鲜度不同（如 cn 今天新爬、us 是几天前的存量），
+    若用全局 max，旧市场会整体落在 24h 窗口之外导致聚合清空。
+    """
     import datetime as _dt
     from sqlalchemy import select, func
     from .models import Post
     with session_scope() as s:
-        mx = s.execute(select(func.max(Post.created_utc))).scalar()
+        stmt = select(func.max(Post.created_utc))
+        if market is not None:
+            stmt = stmt.where(Post.market == market)
+        mx = s.execute(stmt).scalar()
     return mx or _dt.datetime.utcnow()

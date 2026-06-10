@@ -11,7 +11,7 @@ from ..common.models import ItemAnalysis, Mention, Post, Trending
 
 
 def run_trending(window_h: int = 24, recent_h: int = 6, market: str = "us") -> int:
-    now = data_now()
+    now = data_now(market)  # 按 market 各自锚定，避免另一市场更新时本市场落在窗口外
     cutoff = now - dt.timedelta(hours=48)
 
     with session_scope() as s:

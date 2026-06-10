@@ -27,7 +27,7 @@ def _hour_floor(ts: dt.datetime) -> dt.datetime:
 
 def run_rollups(market: str = "us") -> int:
     weights = _sub_weights()
-    now = data_now()
+    now = data_now(market)
     window_h = settings.mindshare_window_hours
     max_h = max(window_h, 48)
     cutoff = now - dt.timedelta(hours=max_h)

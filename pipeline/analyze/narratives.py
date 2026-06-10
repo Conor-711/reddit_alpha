@@ -34,7 +34,7 @@ def _load_window_posts(s, cutoff, market):
 
 
 def run_narratives(mock: bool = False, min_posts: int = 2, market: str = "us") -> int:
-    now = data_now()
+    now = data_now(market)  # 按 market 各自锚定，避免另一市场更新时本市场落在窗口外
     cutoff = now - dt.timedelta(hours=settings.mindshare_window_hours)
 
     with session_scope() as s:
@@ -43,7 +43,7 @@ def run_narratives(mock: bool = False, min_posts: int = 2, market: str = "us") -
         if mock:
             groups = _cluster_by_theme(rows)
         else:
-            groups = _cluster_by_claude(rows)
+            groups = _cluster_by_llm(rows)
 
         # 只清空本 market 的旧叙事（保留另一 market）
         old_ids = [r[0] for r in s.execute(
@@ -102,9 +102,9 @@ def _cluster_by_theme(rows) -> list[dict]:
     return out
 
 
-def _cluster_by_claude(rows) -> list[dict]:
-    """用 Claude Sonnet 对高分帖语义聚类（返回与 mock 相同结构）。"""
-    from ..common.claude import messages_json
+def _cluster_by_llm(rows) -> list[dict]:
+    """中档任务：对高分帖语义聚类（DeepSeek deepseek-v4-pro），返回与 mock 相同结构。"""
+    from ..common.llm import MID, messages_json, model_label
 
     items = sorted(rows, key=lambda r: -(float(r[2] or 0) * float(r[9] or 0.5)))[:40]
     listing = "\n".join(
@@ -115,7 +115,8 @@ def _cluster_by_claude(rows) -> list[dict]:
         '只输出 JSON：{"narratives":[{"name":中文主题名,"summary":一段话中文摘要,'
         '"post_ids":[...],"tickers":[代表代码...]}]}。post_ids 必须取自给定 id。'
     )
-    data, _ = messages_json(system, listing, settings.model_synth, max_tokens=2000)
+    data = messages_json(MID, system, listing, max_tokens=2000)
+    label = model_label(MID)
     score_map = {r[0]: float(r[2] or 0) for r in rows}
     out = []
     for n in (data or {}).get("narratives", []):
@@ -126,7 +127,7 @@ def _cluster_by_claude(rows) -> list[dict]:
             name=n.get("name", "未命名"), summary=n.get("summary", ""), post_ids=pids,
             heat=sum(score_map[p] for p in pids),
             tickers=[(t, 1.0) for t in n.get("tickers", [])],
-            model=settings.model_synth,
+            model=label,
         ))
     return out
 
