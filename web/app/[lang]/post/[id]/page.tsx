@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { LocaleLink } from "@/components/i18n/LocaleLink";
 import { notFound } from "next/navigation";
-import { Panel, SubredditChip, Avatar, SentPill, TickerChip, ThemeTag } from "@/components/ui";
+import { SubredditChip, Avatar, SentPill, TickerChip, ThemeTag } from "@/components/ui";
 import { MarkdownLite } from "@/components/MarkdownLite";
 import { Comments } from "@/components/Comments";
 import { TranslateToggle } from "@/components/TranslateToggle";
 import { AdSlot } from "@/components/AdSlot";
 import { ShareBar } from "@/components/ShareBar";
-import { IconUpvote, IconComment, IconDoc } from "@/components/icons";
+import { IconUpvote, IconComment, IconDoc, IconList } from "@/components/icons";
 import { timeAgo, fmtCompact, fmtInt, REDDIT } from "@/lib/format";
 import { getPostDetail, getAllPostIds } from "@/lib/queries";
 import { getDictionary, isLocale, defaultLocale, type Locale, type Dictionary } from "@/lib/i18n";
@@ -29,7 +29,7 @@ export function generateMetadata({ params }: { params: { lang: string; id: strin
   const title = `${rawTitle.slice(0, 90)} | redditalpha`;
   const desc =
     (zh && d.analysis?.tldr_zh ? d.analysis.tldr_zh : d.analysis?.tldr) ||
-    (zh ? "Reddit 财经社区的真实讨论与 AI 多空提炼。" : "Real discussion and AI-distilled bull/bear takes from Reddit.");
+    (zh ? "Reddit 财经社区的真实讨论与多空提炼。" : "Real discussion and distilled bull/bear takes from Reddit.");
   const url = `${SITE_URL}/${lang}/post/${params.id}/`;
   return {
     title,
@@ -49,22 +49,23 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
   const { post, analysis, comments } = d;
   const hasAI = analysis && (analysis.tldr || analysis.bull.length > 0 || analysis.bear.length > 0);
   const isZh = lang === "zh";
-  // 标题 + AI 摘要直接给中文；正文 / 评论用「译文 / 原文」切换按钮（不再看广告解锁）。
+  // 标题 + 摘要直接给中文；正文 / 评论用「译文 / 原文」切换按钮。
   const postTitle = isZh && post.title_zh ? post.title_zh : post.title;
   const aiTldr = isZh && analysis?.tldr_zh ? analysis.tldr_zh : analysis?.tldr ?? "";
   const aiBull = isZh && analysis?.bull_zh.length ? analysis.bull_zh : analysis?.bull ?? [];
   const aiBear = isZh && analysis?.bear_zh.length ? analysis.bear_zh : analysis?.bear ?? [];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5">
-      <div className="flex items-center justify-between gap-3">
+    // 无卡片：各模块在更宽的阅读栏里自然分布，靠区块标题 + 分隔线区分，正文留足宽度便于阅读。
+    <article className="max-w-5xl mx-auto">
+      <div className="flex items-center justify-between gap-3 mb-6">
         <LocaleLink href="/dashboard" className="text-xs text-neutral-500 hover:text-reddit transition">{t.back}</LocaleLink>
         <ShareBar path={`/${lang}/post/${post.id}`} text={sh.postText.replace("{s}", postTitle)} ticker={analysis?.tickers?.[0]?.ticker} />
       </div>
 
-      {/* ① 标题 / 帖头 —— masthead（投票轨 + 元信息 + 标题） */}
-      <Panel className="p-5 sm:p-6 flex gap-4">
-        <div className="flex flex-col items-center gap-0.5 shrink-0 w-12">
+      {/* ① 标题 / 帖头 —— masthead（投票轨 + 元信息 + 标题），底部分隔线 */}
+      <header className="flex gap-4 sm:gap-5 pb-7 border-b border-line">
+        <div className="flex flex-col items-center gap-0.5 shrink-0 w-11">
           <IconUpvote className="w-5 h-5 text-reddit" />
           <span className="font-mono font-bold text-reddit tabular leading-none">{fmtCompact(post.score)}</span>
           {post.upvote_ratio > 0 && (
@@ -87,32 +88,25 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
               <IconComment className="w-3.5 h-3.5" /> {fmtInt(post.comments)}
             </span>
           </div>
-          <h1 className="mt-2 font-display font-extrabold text-cream text-[22px] sm:text-[24px] leading-snug tracking-tight">
+          <h1 className="mt-2.5 font-display font-extrabold text-cream text-[26px] sm:text-[30px] leading-tight tracking-tight">
             {postTitle}
           </h1>
         </div>
-      </Panel>
+      </header>
 
-      {/* ② AI 投资者摘要 —— 橙色主题（结论先行） */}
+      {/* ② 投资者摘要（结论先行）—— 无卡片，区块标题 + 内容 */}
       {hasAI && (
-        <Panel
-          className="p-5 sm:p-6"
-          style={{ boxShadow: "inset 0 0 0 1.5px rgba(255,69,0,0.28), var(--panel-shadow)", background: "linear-gradient(180deg, rgba(255,69,0,0.045), transparent 40%), var(--panel-bg)" }}
-        >
-          <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-reddit/15">
-            <span className="grid place-items-center w-7 h-7 rounded-lg bg-reddit text-white text-[11px] font-extrabold shrink-0 shadow-sm shadow-reddit/40">AI</span>
-            <span className="font-display font-bold text-cream text-[15px]">{t.aiSummary}</span>
-            {analysis!.stance && <SentPill stance={analysis!.stance} className="ml-auto" />}
-          </div>
-          {aiTldr && <p className="text-[15px] text-cream leading-relaxed">{aiTldr}</p>}
+        <section className="pt-8">
+          <SectionHead accent="reddit" icon={<IconList className="w-4 h-4" />} title={t.aiSummary} right={analysis!.stance ? <SentPill stance={analysis!.stance} /> : null} />
+          {aiTldr && <p className="text-[17px] text-cream leading-relaxed">{aiTldr}</p>}
           {(aiBull.length > 0 || aiBear.length > 0) && (
-            <div className="mt-4 grid sm:grid-cols-2 gap-x-5 gap-y-3">
+            <div className="mt-5 grid sm:grid-cols-2 gap-x-8 gap-y-3">
               <PointList t={t} tone="bull" items={aiBull} />
               <PointList t={t} tone="bear" items={aiBear} />
             </div>
           )}
           {(analysis!.tickers.length > 0 || analysis!.themes.length > 0) && (
-            <div className="mt-4 pt-3 border-t border-line flex flex-wrap items-center gap-1.5">
+            <div className="mt-5 flex flex-wrap items-center gap-1.5">
               {analysis!.tickers.slice(0, 8).map((tk) => (
                 <TickerChip key={tk.ticker} ticker={tk.ticker} size="xs" />
               ))}
@@ -121,67 +115,81 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
               ))}
             </div>
           )}
-        </Panel>
+        </section>
       )}
 
-      {/* 广告位（原「看广告解锁翻译」的广告改为此处静态占位；可手动关闭） */}
-      <AdSlot variant="banner" slot="post-mid" />
+      <div className="pt-8">
+        <AdSlot variant="banner" slot="post-mid" />
+      </div>
 
-      {/* ③ 帖子正文 —— 金色主题（原始素材，阅读区） */}
-      {post.selftext ? (
-        <Panel className="p-5 sm:p-7">
-          <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-gold/20">
-            <span className="grid place-items-center w-7 h-7 rounded-lg bg-gold/15 text-gold shrink-0">
-              <IconDoc className="w-4 h-4" />
-            </span>
-            <span className="font-display font-bold text-cream text-[15px]">{t.bodyTitle}</span>
+      {/* ③ 帖子正文 —— 阅读区，留足宽度 */}
+      <section className="pt-8">
+        {post.selftext ? (
+          <>
+            <SectionHead accent="gold" icon={<IconDoc className="w-4 h-4" />} title={t.bodyTitle} />
+            {/* 正文阅读区：一层柔和的浅色底，把正文从页面背景里托起来，提升可读性 */}
+            <div className="rounded-2xl bg-white/[.025] ring-1 ring-inset ring-white/[.06] px-5 py-6 sm:px-8 sm:py-7 text-[16px] leading-[1.85]">
+              <TranslateToggle
+                hasZh={!!post.selftext_zh}
+                original={<MarkdownLite md={post.selftext_fmt || post.selftext} size="base" />}
+                zh={<MarkdownLite md={post.selftext_zh} size="base" />}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="text-sm text-neutral-500">
+            {t.noSelftext}
+            {post.permalink && (
+              <a href={`${REDDIT}${post.permalink}`} target="_blank" rel="noreferrer" className="ml-1 text-reddit hover:underline">
+                {t.viewLink}
+              </a>
+            )}
           </div>
-          <TranslateToggle
-            hasZh={!!post.selftext_zh}
-            original={<MarkdownLite md={post.selftext_fmt || post.selftext} size="base" />}
-            zh={<MarkdownLite md={post.selftext_zh} size="base" />}
-          />
-        </Panel>
-      ) : (
-        <Panel className="p-5 text-sm text-neutral-500">
-          {t.noSelftext}
-          {post.permalink && (
-            <a href={`${REDDIT}${post.permalink}`} target="_blank" rel="noreferrer" className="ml-1 text-reddit hover:underline">
-              {t.viewLink}
-            </a>
-          )}
-        </Panel>
-      )}
+        )}
+      </section>
 
-      {/* ④ 讨论 / 评论 —— 绿色主题（社区） */}
-      <Panel className="p-5 sm:p-6">
-        <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-bull/15">
-          <span className="grid place-items-center w-7 h-7 rounded-lg bg-bull/15 text-bull shrink-0">
-            <IconComment className="w-4 h-4" />
-          </span>
-          <span className="font-display font-bold text-cream text-[15px]">{t.discussion}</span>
-          {comments.length > 0 && (
-            <span className="ml-auto text-xs text-neutral-500 shrink-0">{comments.length} {t.commentsCount}</span>
-          )}
-        </div>
+      {/* ④ 讨论 / 评论 —— 社区 */}
+      <section className="pt-8">
+        <SectionHead
+          accent="bull"
+          icon={<IconComment className="w-4 h-4" />}
+          title={t.discussion}
+          right={comments.length > 0 ? <span className="text-xs text-neutral-500">{comments.length} {t.commentsCount}</span> : null}
+        />
         <TranslateToggle
           hasZh={comments.some((c) => !!c.body_zh)}
           original={<Comments comments={comments} showZh={false} />}
           zh={<Comments comments={comments} showZh={true} />}
         />
-      </Panel>
+      </section>
 
       {/* 原帖（次要入口） */}
-      <div className="pt-1 pb-4 text-center">
-        <a
-          href={`${REDDIT}${post.permalink}`}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs text-neutral-500 hover:text-reddit transition"
-        >
+      <div className="pt-10 pb-4 text-center">
+        <a href={`${REDDIT}${post.permalink}`} target="_blank" rel="noreferrer" className="text-xs text-neutral-500 hover:text-reddit transition">
           {t.viewOnReddit}
         </a>
       </div>
+    </article>
+  );
+}
+
+// 区块标题：彩色图标徽标 + 标题 + 可选右侧（立场 / 计数），底部一条细分隔线——替代原卡片边框。
+function SectionHead({
+  accent, icon, title, right,
+}: { accent: "reddit" | "gold" | "bull"; icon: React.ReactNode; title: string; right?: React.ReactNode }) {
+  const badge =
+    accent === "reddit" ? "bg-reddit/15 text-reddit"
+    : accent === "gold" ? "bg-gold/15 text-gold"
+    : "bg-bull/15 text-bull";
+  const border =
+    accent === "reddit" ? "border-reddit/20"
+    : accent === "gold" ? "border-gold/20"
+    : "border-bull/20";
+  return (
+    <div className={`flex items-center gap-2.5 pb-3 mb-4 border-b ${border}`}>
+      <span className={`grid place-items-center w-7 h-7 rounded-lg shrink-0 ${badge}`}>{icon}</span>
+      <span className="font-display font-bold text-cream text-[15px]">{title}</span>
+      {right && <span className="ml-auto shrink-0">{right}</span>}
     </div>
   );
 }

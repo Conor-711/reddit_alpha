@@ -40,7 +40,7 @@ export function RedditMark({ size = 20 }: { size?: number }) {
 }
 
 // 完整身体的 Reddit 头像角色，用作页面吉祥物（落地页 / 今日Alpha 头牌 / 空状态等）。
-export function SnooCharacter({ n = 1, className = "" }: { n?: 1 | 2 | 3 | 4; className?: string }) {
+export function SnooCharacter({ n = 1, className = "" }: { n?: 1 | 2 | 3 | 4 | "a" | "b" | "c"; className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img

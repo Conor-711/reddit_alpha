@@ -6,22 +6,25 @@ import { useLocale } from "./i18n/LocaleProvider";
 import { IconFlame, IconArrow } from "./icons";
 import { fetchTopSearches } from "@/lib/searchCounts";
 
-export interface HeatItem { ticker: string; name: string; mentions: number; sentiment: number }
-type Row = { ticker: string; name: string; value: number; sentiment?: number };
+export interface HeatItem { ticker: string; name: string; mentions: number; sentiment: number; base?: string }
+type Row = { ticker: string; name: string; value: number; sentiment?: number; base?: string };
 
 // 搜索热度榜：优先全网真实搜索次数（Supabase），未配置/为空时降级到真实社区讨论热度。
+// bases：全站搜索下每个标的的个股页前缀（/ticker 或 /cn/ticker），保证点进去落到正确市场页。
 export function SearchLeaderboard({
   heat,
   names,
   tickerBase = "/ticker",
+  bases,
 }: {
   heat: HeatItem[];
   names: Record<string, string>;
   tickerBase?: string;
+  bases?: Record<string, string>;
 }) {
   const { dict } = useLocale();
   const t = dict.search;
-  const heatRows: Row[] = heat.map((h) => ({ ticker: h.ticker, name: h.name, value: h.mentions, sentiment: h.sentiment }));
+  const heatRows: Row[] = heat.map((h) => ({ ticker: h.ticker, name: h.name, value: h.mentions, sentiment: h.sentiment, base: h.base }));
   const [rows, setRows] = useState<Row[]>(heatRows);
   const [live, setLive] = useState(false);
 
@@ -29,13 +32,13 @@ export function SearchLeaderboard({
     let alive = true;
     fetchTopSearches(10).then((top) => {
       if (!alive || top.length === 0) return; // 空 → 保持社区热度兜底
-      setRows(top.map((r) => ({ ticker: r.ticker, name: names[r.ticker] ?? "", value: r.count })));
+      setRows(top.map((r) => ({ ticker: r.ticker, name: names[r.ticker] ?? "", value: r.count, base: bases?.[r.ticker] })));
       setLive(true);
     });
     return () => {
       alive = false;
     };
-  }, [names]);
+  }, [names, bases]);
 
   if (rows.length === 0) {
     return <p className="text-sm text-neutral-500 text-center py-8">{t.empty}</p>;
@@ -65,7 +68,7 @@ export function SearchLeaderboard({
         {rows.map((r, i) => (
           <li key={r.ticker}>
             <LocaleLink
-              href={`${tickerBase}/${r.ticker}`}
+              href={`${r.base ?? bases?.[r.ticker] ?? tickerBase}/${r.ticker}`}
               className="group flex items-center gap-3 px-3.5 py-2.5 border-b border-line last:border-0 hover:bg-reddit/[.06] transition"
             >
               <span className={rankClass(i)}>{i + 1}</span>

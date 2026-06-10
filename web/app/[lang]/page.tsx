@@ -171,6 +171,12 @@ export default function Landing({ params }: { params: { lang: string } }) {
   const zh = lang === "zh";
   const t = getDictionary(lang).landing;
 
+  // 把 lede 按首句拆成两行，做出阅读节奏（不改字典，按句号/句点切分）。
+  const ledeSep = zh ? "。" : ". ";
+  const ledeIdx = t.ledePre.indexOf(ledeSep);
+  const lede1 = ledeIdx >= 0 ? t.ledePre.slice(0, ledeIdx) : t.ledePre;
+  const lede2 = ledeIdx >= 0 ? t.ledePre.slice(ledeIdx + ledeSep.length) : "";
+
   const s = getLandingStats();
   const subs = s.subs.length ? s.subs : FALLBACK_SUBS;
   const totalSubscribers =
@@ -214,22 +220,29 @@ export default function Landing({ params }: { params: { lang: string } }) {
         </header>
 
         <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pb-20 pt-2">
-          <div className="w-full max-w-4xl mx-auto">
+          <div className="w-full max-w-5xl mx-auto">
             <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-semibold ring-1 ring-inset ring-white/10 bg-white/[.03] text-neutral-300">
               <IconUpvote className="w-3.5 h-3.5 text-reddit" />
               {t.badge}
             </div>
 
-            <h1 className="mt-6 font-display font-extrabold text-cream tracking-tight leading-[1.08] text-[clamp(34px,6vw,60px)]">
+            {/* 主标题：强制单行（whitespace-nowrap），用 vw 自适应缩放以适配各宽度 */}
+            <h1 className="mt-6 font-display font-extrabold text-cream tracking-tight leading-[1.1] whitespace-nowrap text-[clamp(20px,5vw,52px)]">
               {t.titleLead} <span className="metal-text m-gold">{t.titleGold}</span>
               {t.titleTail}
             </h1>
 
-            <p className="mt-5 mx-auto max-w-2xl text-neutral-400 leading-relaxed text-[15px] sm:text-[16px]">
-              {t.ledePre}
-              <span className="text-cream font-medium">{t.ledeStrong}</span>
-              {t.ledePost}
-            </p>
+            {/* lede：拆成两句两行，重点短语强调 + 平衡换行 */}
+            <div className="mt-6 mx-auto max-w-xl flex flex-col gap-1.5 [text-wrap:balance]">
+              <p className="text-cream/90 font-medium leading-relaxed text-[16px] sm:text-[17px]">
+                {lede1}{zh ? "。" : "."}
+              </p>
+              <p className="text-neutral-400 leading-relaxed text-[15px] sm:text-[16px]">
+                {lede2}
+                <span className="text-cream font-semibold">{t.ledeStrong}</span>
+                {t.ledePost}
+              </p>
+            </div>
 
             <div className="mt-8 flex flex-col items-center">
               <LocaleLink
@@ -294,12 +307,6 @@ export default function Landing({ params }: { params: { lang: string } }) {
             />
           </div>
 
-          <p className="mt-3 text-center text-[11px] text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-            {zh
-              ? "* 战绩来自公开报道与本人披露，部分为未经第三方审计的自述，仅作为社区信息质量的佐证，非投资建议。"
-              : "* Track records are from public reporting and self-disclosure; some figures are self-reported and not third-party audited. Shown as evidence of community quality, not investment advice."}
-          </p>
-
           {/* 社区芯片 */}
           <div className="mt-9 flex flex-wrap items-center justify-center gap-2">
             {subs.slice(0, 8).map((c) => (
@@ -319,16 +326,19 @@ export default function Landing({ params }: { params: { lang: string } }) {
               className="absolute inset-x-0 bottom-1 h-px"
               style={{ background: "linear-gradient(90deg, transparent, rgba(255,69,0,.35), transparent)" }}
             />
-            <div className="relative flex items-end justify-center gap-3 sm:gap-7">
-              {([2, 1, 3, 4] as const).map((n, i) => (
-                <SnooCharacter
-                  key={n}
-                  n={n}
-                  className={`w-auto drop-shadow-[0_14px_22px_rgba(0,0,0,.22)] transition duration-300 hover:-translate-y-1.5 ${
-                    i === 1 || i === 2 ? "h-20 sm:h-28" : "h-16 sm:h-24"
-                  } ${i % 2 ? "translate-y-1" : ""}`}
-                />
-              ))}
+            <div className="relative flex items-end justify-center gap-2 sm:gap-5 flex-wrap">
+              {(["a", 2, 1, "b", 3, "c", 4] as const).map((n, i, arr) => {
+                const mid = (arr.length - 1) / 2;
+                const d = Math.abs(i - mid);
+                const h = d < 1 ? "h-20 sm:h-32" : d < 2 ? "h-[4.5rem] sm:h-28" : "h-16 sm:h-24";
+                return (
+                  <SnooCharacter
+                    key={String(n)}
+                    n={n}
+                    className={`w-auto drop-shadow-[0_14px_22px_rgba(0,0,0,.22)] transition duration-300 hover:-translate-y-1.5 ${h} ${i % 2 ? "translate-y-1" : ""}`}
+                  />
+                );
+              })}
             </div>
           </div>
 

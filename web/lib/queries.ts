@@ -255,6 +255,52 @@ export function getSearchHeat(limit = 10, market = "us"): HeatRow[] {
   );
 }
 
+// ---------- 全站搜索（合并美股 + 中概/港股/A 股，一个入口搜全部） ----------
+// 每个标的按「实际存在的个股页」打 market 标，路由到 /ticker（美股）或 /cn/ticker（中概港股），
+// 避免把仅有中概页的标的（如 BABA/NIO，ticker_meta.market='cn'）错误指向不存在的美股页而 404。
+export interface GlobalTicker { ticker: string; name: string; posts: number; market: string }
+export interface GlobalHeat extends HeatRow { market: string }
+
+// 选出该标的应落在哪个市场的个股页（页面真实存在才返回；prefer 决定同名时优先哪边）。
+function _pageMarket(ticker: string, usPages: Set<string>, cnPages: Set<string>, prefer: "us" | "cn"): string | null {
+  if (prefer === "us") return usPages.has(ticker) ? "us" : cnPages.has(ticker) ? "cn" : null;
+  return cnPages.has(ticker) ? "cn" : usPages.has(ticker) ? "us" : null;
+}
+
+export function getGlobalSearchableTickers(): GlobalTicker[] {
+  const usPages = new Set(getAllTickerSymbols());
+  const cnPages = new Set(getAllCnTickerSymbols());
+  const byTicker = new Map<string, GlobalTicker>();
+  const reg = (x: SearchableTicker, prefer: "us" | "cn") => {
+    const market = _pageMarket(x.ticker, usPages, cnPages, prefer);
+    if (!market) return; // 没有对应个股页 → 不放进可搜集合（避免点进去 404）
+    const ex = byTicker.get(x.ticker);
+    if (!ex) byTicker.set(x.ticker, { ticker: x.ticker, name: x.name, posts: x.posts, market });
+    else ex.posts += x.posts; // 跨市场讨论量累加；市场口径保留首次选定（页面存在）
+  };
+  for (const x of getSearchableTickers("us")) reg(x, "us");
+  for (const x of getSearchableTickers("cn")) reg(x, "cn");
+  return [...byTicker.values()].sort((a, b) => b.posts - a.posts);
+}
+
+export function getGlobalSearchHeat(limit = 10): GlobalHeat[] {
+  const usPages = new Set(getAllTickerSymbols());
+  const cnPages = new Set(getAllCnTickerSymbols());
+  const byTicker = new Map<string, GlobalHeat>();
+  const add = (x: HeatRow, prefer: "us" | "cn") => {
+    const market = _pageMarket(x.ticker, usPages, cnPages, prefer);
+    if (!market) return;
+    const ex = byTicker.get(x.ticker);
+    if (!ex) { byTicker.set(x.ticker, { ...x, market }); return; }
+    const total = ex.mentions + x.mentions;
+    ex.sentiment = total ? (ex.sentiment * ex.mentions + x.sentiment * x.mentions) / total : 0;
+    ex.mentions = total;
+  };
+  for (const x of getSearchHeat(200, "us")) add(x, "us");
+  for (const x of getSearchHeat(200, "cn")) add(x, "cn");
+  return [...byTicker.values()].sort((a, b) => b.mentions - a.mentions).slice(0, limit);
+}
+
 export interface CommentRow {
   id: string; author: string | null; body: string; body_zh: string; score: number; created: string; parent: string | null;
 }

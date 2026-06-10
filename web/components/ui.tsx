@@ -5,6 +5,7 @@ import { useLocale } from "./i18n/LocaleProvider";
 import { sentTextClass, stanceLabel } from "@/lib/format";
 import { SnooAvatar } from "./reddit";
 import { CommunityIcon } from "./CommunityIcon";
+import { IconTrophy, IconPulse, IconTrend, IconFlame, IconLayers, IconDoc, IconWaves } from "./icons";
 
 // 用户头像 = Reddit 风格的 Snoo（每个用户按名字确定性取色）。
 export function Avatar({ name, size = 20 }: { name: string; size?: number }) {
@@ -64,12 +65,46 @@ export function HeaderStat({ label, value, tone = "text-cream" }: { label: strin
   );
 }
 
-export function SectionTitle({ title, hint, href }: { title: string; hint?: string; href?: string }) {
+// 每个分区的强调色 + 图标，避免所有看板「同一根橙条」造成的审美疲劳。
+// 用字符串 key（可跨 server→client 边界），内部映射到颜色类与图标组件。
+const ST_ACCENT: Record<string, { bar: string; chip: string }> = {
+  reddit: { bar: "bg-reddit", chip: "bg-reddit/12 text-reddit ring-reddit/20" },
+  amber: { bar: "bg-amber", chip: "bg-amber/15 text-amber ring-amber/20" },
+  gold: { bar: "bg-gold", chip: "bg-gold/15 text-gold ring-gold/25" },
+  bull: { bar: "bg-bull", chip: "bg-bull/15 text-bull ring-bull/20" },
+  bear: { bar: "bg-bear", chip: "bg-bear/15 text-bear ring-bear/20" },
+  neutral: { bar: "bg-neutral-500", chip: "bg-white/[.06] text-neutral-300 ring-white/10" },
+};
+const ST_ICON: Record<string, (p: { className?: string }) => JSX.Element> = {
+  trophy: IconTrophy, pulse: IconPulse, trend: IconTrend, flame: IconFlame, layers: IconLayers, doc: IconDoc, waves: IconWaves,
+};
+
+export function SectionTitle({
+  title,
+  hint,
+  href,
+  accent = "reddit",
+  icon,
+}: {
+  title: string;
+  hint?: string;
+  href?: string;
+  accent?: keyof typeof ST_ACCENT;
+  icon?: keyof typeof ST_ICON;
+}) {
   const { dict } = useLocale();
+  const a = ST_ACCENT[accent] ?? ST_ACCENT.reddit;
+  const Ic = icon ? ST_ICON[icon] : undefined;
   return (
     <div className="flex items-center gap-3 mb-3">
       <div className="flex items-center gap-2 shrink-0">
-        <span className="w-1 h-3.5 rounded-full bg-reddit" />
+        {Ic ? (
+          <span className={`grid place-items-center w-6 h-6 rounded-lg ring-1 ring-inset ${a.chip}`}>
+            <Ic className="w-3.5 h-3.5" />
+          </span>
+        ) : (
+          <span className={`w-1 h-3.5 rounded-full ${a.bar}`} />
+        )}
         <h2 className="font-display font-bold text-cream text-[15px] tracking-tight">{title}</h2>
       </div>
       <div className="h-px flex-1 bg-line/70" />

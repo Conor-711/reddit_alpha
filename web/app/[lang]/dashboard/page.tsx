@@ -1,17 +1,15 @@
 import { LocaleLink } from "@/components/i18n/LocaleLink";
-import { Panel, SectionTitle, Eyebrow, MiniBar, ScoreNum } from "@/components/ui";
-import { MoodGauge } from "@/components/charts/MoodGauge";
+import { Panel, SectionTitle, Eyebrow, MiniBar } from "@/components/ui";
 import { FeedCard } from "@/components/FeedCard";
 import { NarrativeCard } from "@/components/NarrativeCard";
 import { TodaysAlpha } from "@/components/TodaysAlpha";
-import { DataCredibility } from "@/components/DataCredibility";
 import { IconFlame, IconWaves } from "@/components/icons";
 import { AdSlot } from "@/components/AdSlot";
 import { fmtInt, sentTextClass } from "@/lib/format";
 import { getDictionary, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
 import {
   getMarketMood, getMindshare, getTrending, getNarratives, getFeed, getMeta, getTodaysAlpha,
-  getSentimentLeaders, getDataStats,
+  getSentimentLeaders,
 } from "@/lib/queries";
 
 export default function Overview({ params }: { params: { lang: string } }) {
@@ -19,7 +17,6 @@ export default function Overview({ params }: { params: { lang: string } }) {
   const t = getDictionary(lang).dashboard;
 
   const meta = getMeta();
-  const stats = getDataStats();
   const mood = getMarketMood();
   const alpha = getTodaysAlpha(3);
   const mind = getMindshare(12);
@@ -28,13 +25,14 @@ export default function Overview({ params }: { params: { lang: string } }) {
   const narratives = getNarratives(6);
   const feed = getFeed({ limit: 6 });
   const maxShare = mind[0]?.mindshare || 1;
+  const maxZ = Math.max(0.1, ...spikes.map((s) => s.zscore));
+  const maxBull = Math.max(0.01, ...leaders.bullish.map((r) => r.sentiment));
+  const maxBear = Math.max(0.01, ...leaders.bearish.map((r) => Math.abs(r.sentiment)));
 
   return (
     <div className="space-y-4">
-      {/* 顶部：数据可信度模块（真实数据规模，每天 08:00 分析后刷新） */}
-      <DataCredibility stats={stats} />
-
-      {/* 首页头牌：今日 Reddit Alpha（置顶、Reddit 橙主题、视觉最强） */}
+      {/* 首页头牌：今日 Reddit Alpha（置顶、Reddit 橙主题、视觉最强）。
+          数据可信度「依据模块」已移至顶部 banner（Topbar）。 */}
       <TodaysAlpha alphas={alpha} />
 
       {/* Masthead */}
@@ -61,97 +59,85 @@ export default function Overview({ params }: { params: { lang: string } }) {
       {/* 广告位（模块间横幅） */}
       <AdSlot variant="banner" slot="dashboard-mid" />
 
-      {/* 第一行：热度榜（收窄至 1/2）+ 右列堆叠：市场情绪 / 多空风向标 */}
+      {/* 第一行：热度榜（条形=声量、颜色=情绪）+ 异动&风向（合并卡） */}
       <div className="grid lg:grid-cols-2 gap-4 items-start">
+        {/* 热度榜：不显示具体数字——条形长度=相对声量，颜色=多空情绪，一眼看排名与方向 */}
         <Panel className="p-5">
-          <SectionTitle title={t.topTitle} hint={t.topHint} />
-          <div className="space-y-1">
+          <SectionTitle title={t.topTitle} hint={t.topHint} accent="gold" icon="trophy" />
+          <div className="space-y-0.5">
             {mind.map((r, i) => (
               <LocaleLink
                 key={r.ticker}
                 href={`/ticker/${r.ticker}`}
-                className="grid grid-cols-[20px_64px_1fr_auto] sm:grid-cols-[24px_72px_1fr_96px_56px] items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[.03] transition group"
+                title={`${r.name} · ${r.mindshare.toFixed(1)}% · ${r.sentiment > 0 ? "+" : ""}${r.sentiment.toFixed(2)}`}
+                className="grid grid-cols-[22px_64px_1fr] items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[.03] transition group"
               >
                 <span className="flex justify-end">
                   {i < 3 ? (
                     <span className={`grid place-items-center w-5 h-5 rounded-full text-[10px] font-extrabold metal-fill ${i === 0 ? "m-gold" : i === 1 ? "m-silver" : "m-bronze"}`}>{i + 1}</span>
                   ) : (
-                    <span className="text-xs text-neutral-600 tabular">{i + 1}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
                   )}
                 </span>
                 <span className="font-mono font-semibold text-cream group-hover:text-amber transition">{r.ticker}</span>
-                <span className="hidden sm:block text-sm text-neutral-500 truncate">{r.name}</span>
-                <div className="flex items-center gap-2">
-                  <MiniBar pct={(r.mindshare / maxShare) * 100} />
-                  <span className="font-mono text-xs text-neutral-300 tabular w-11 text-right">{r.mindshare.toFixed(1)}%</span>
-                </div>
-                <span className="text-right text-xs hidden sm:block"><ScoreNum score={r.sentiment} /></span>
+                <MiniBar pct={(r.mindshare / maxShare) * 100} color={sentBar(r.sentiment)} />
               </LocaleLink>
             ))}
           </div>
         </Panel>
 
-        <div className="flex flex-col gap-4">
-          <Panel className="p-5 flex flex-col">
-            <h2 className="font-display font-bold text-cream mb-1">{t.moodTitle}</h2>
-            {mood ? (
-              <>
-                <MoodGauge value={mood.mood_score} />
-                <div className="text-center -mt-2">
-                  <span className={`font-display font-bold text-lg ${sentTextClass(mood.mood_score)}`}>
-                    {mood.label}
-                  </span>
-                </div>
-                <div className="mt-4">
-                  <div className="flex h-2.5 rounded-full overflow-hidden bg-white/5">
-                    <div className="bg-bull" style={{ width: `${mood.bull_pct}%` }} />
-                    <div className="bg-neutral-600" style={{ width: `${mood.neutral_pct}%` }} />
-                    <div className="bg-bear" style={{ width: `${mood.bear_pct}%` }} />
+        {/* 异动 & 多空风向标：合并为一张卡，两段（条形+颜色，无数字） */}
+        <Panel className="p-5 space-y-5">
+          {/* 异动飙升：条形=飙升幅度(z)，颜色=情绪，🔥=触发 spike */}
+          <div>
+            <SectionTitle title={t.spikeTitle} accent="amber" icon="flame" />
+            <div className="space-y-0.5">
+              {spikes.slice(0, 6).map((x) => (
+                <LocaleLink
+                  key={x.ticker}
+                  href={`/ticker/${x.ticker}`}
+                  title={`z ${x.zscore > 0 ? "+" : ""}${x.zscore.toFixed(1)} · ${x.mentions}${t.mentionsSuffix}`}
+                  className="grid grid-cols-[92px_1fr] items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-white/[.03] transition group"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {x.spike ? <IconFlame className="w-3.5 h-3.5 text-amber shrink-0" /> : <span className="w-3.5 shrink-0" />}
+                    <span className="font-mono font-semibold text-cream group-hover:text-amber transition truncate">{x.ticker}</span>
                   </div>
-                  <div className="mt-2 flex justify-between text-xs">
-                    <span className="text-bull">{t.moodBull} {mood.bull_pct.toFixed(0)}%</span>
-                    <span className="text-neutral-500">{t.moodNeutral} {mood.neutral_pct.toFixed(0)}%</span>
-                    <span className="text-bear">{t.moodBear} {mood.bear_pct.toFixed(0)}%</span>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-line grid grid-cols-2 gap-3 text-sm">
-                  <Stat label={t.windowPosts} value={fmtInt(mood.total_posts)} />
-                  <Stat label={t.windowMentions} value={fmtInt(mood.total_mentions)} />
-                </div>
-              </>
-            ) : (
-              <Empty pre={t.emptyPre} />
-            )}
-          </Panel>
+                  <MiniBar pct={(Math.max(0, x.zscore) / maxZ) * 100} color={sentBar(x.sentiment)} />
+                </LocaleLink>
+              ))}
+            </div>
+          </div>
 
-          {/* 多空风向标：窗口内最看多 / 最看空的具体标的（补足「情绪到底押在哪些票」） */}
-          <Panel className="p-5">
-            <SectionTitle title={t.leadersTitle} hint={t.leadersHint} />
+          {/* 多空风向标：两列，条形长度=情绪强度，绿=最看多 / 红=最看空 */}
+          <div className="border-t border-line pt-4">
+            <SectionTitle title={t.leadersTitle} hint={t.leadersHint} accent="bull" icon="trend" />
             {leaders.bullish.length || leaders.bearish.length ? (
               <div className="grid grid-cols-2 gap-x-5 gap-y-2">
                 {([
-                  { label: t.leadersBull, dot: "bg-bull", rows: leaders.bullish },
-                  { label: t.leadersBear, dot: "bg-bear", rows: leaders.bearish },
+                  { label: t.leadersBull, dot: "bg-bull", bar: "bg-bull", rows: leaders.bullish, max: maxBull },
+                  { label: t.leadersBear, dot: "bg-bear", bar: "bg-bear", rows: leaders.bearish, max: maxBear },
                 ] as const).map((col) => (
                   <div key={col.label}>
                     <div className="flex items-center gap-1.5 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
                       <span className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
                       {col.label}
                     </div>
-                    <div className="space-y-0.5">
+                    <div className="space-y-1.5">
                       {col.rows.length ? (
-                        col.rows.map((r) => (
+                        col.rows.slice(0, 5).map((r) => (
                           <LocaleLink
                             key={r.ticker}
                             href={`/ticker/${r.ticker}`}
-                            className="flex items-center justify-between gap-2 px-1.5 py-1 rounded-md hover:bg-white/[.03] transition group"
+                            title={`${r.sentiment > 0 ? "+" : ""}${r.sentiment.toFixed(2)}`}
+                            className="grid grid-cols-[50px_1fr] items-center gap-2 px-1 py-0.5 rounded-md hover:bg-white/[.03] transition group"
                           >
                             <span className="font-mono text-sm font-semibold text-cream group-hover:text-amber transition truncate">{r.ticker}</span>
-                            <span className="text-xs shrink-0"><ScoreNum score={r.sentiment} /></span>
+                            <MiniBar pct={(Math.abs(r.sentiment) / col.max) * 100} color={col.bar} />
                           </LocaleLink>
                         ))
                       ) : (
-                        <div className="px-1.5 py-1 text-xs text-neutral-600">{t.leadersEmpty}</div>
+                        <div className="px-1 py-1 text-xs text-neutral-600">{t.leadersEmpty}</div>
                       )}
                     </div>
                   </div>
@@ -160,48 +146,23 @@ export default function Overview({ params }: { params: { lang: string } }) {
             ) : (
               <div className="text-sm text-neutral-600 py-4 text-center">{t.leadersEmpty}</div>
             )}
-          </Panel>
-        </div>
-      </div>
-
-      {/* 第二行：异动飙升 + 主导叙事 */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Panel className="p-5">
-          <SectionTitle title={t.spikeTitle} />
-          <div className="space-y-1">
-            {spikes.map((x) => (
-              <LocaleLink
-                key={x.ticker}
-                href={`/ticker/${x.ticker}`}
-                className="flex items-center justify-between gap-2 px-2 py-2 rounded-lg hover:bg-white/[.03] transition group"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  {x.spike ? <IconFlame className="w-4 h-4 text-amber shrink-0" /> : <span className="w-4" />}
-                  <span className="font-mono font-semibold text-cream group-hover:text-amber transition">{x.ticker}</span>
-                  <span className="text-xs text-neutral-600 tabular">{x.mentions}{t.mentionsSuffix}</span>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="font-mono text-xs text-amber tabular">z {x.zscore > 0 ? "+" : ""}{x.zscore.toFixed(1)}</span>
-                  <span className="text-xs"><ScoreNum score={x.sentiment} /></span>
-                </div>
-              </LocaleLink>
-            ))}
           </div>
         </Panel>
+      </div>
 
-        <div className="lg:col-span-2">
-          <SectionTitle title={t.narrativesTitle} />
-          <div className="grid sm:grid-cols-2 gap-4">
-            {narratives.map((n) => (
-              <NarrativeCard key={n.id} n={n} />
-            ))}
-          </div>
+      {/* 第二行：主导叙事（整宽） */}
+      <div>
+        <SectionTitle title={t.narrativesTitle} accent="reddit" icon="layers" />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {narratives.map((n) => (
+            <NarrativeCard key={n.id} n={n} />
+          ))}
         </div>
       </div>
 
       {/* 高质量 DD 帖（getFeed 已按 quality 排序） */}
       <div>
-        <SectionTitle title={t.ddTitle} />
+        <SectionTitle title={t.ddTitle} accent="neutral" icon="doc" />
         <div className="grid md:grid-cols-2 gap-4">
           {feed.map((p) => (
             <FeedCard key={p.id} p={p} />
@@ -224,15 +185,7 @@ function KPI({ label, value, sub, tone = "text-cream" }: { label: string; value:
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="font-display font-bold text-cream text-xl tabular">{value}</div>
-      <div className="text-[11px] text-neutral-500">{label}</div>
-    </div>
-  );
-}
-
-function Empty({ pre }: { pre: string }) {
-  return <div className="text-sm text-neutral-600 py-8 text-center">{pre}<code className="text-amber">make demo</code></div>;
+// 情绪→条形颜色：绿=看多 / 红=看空 / 灰=中性。用颜色直观表达多空方向（替代数字）。
+function sentBar(score: number): string {
+  return score > 0.15 ? "bg-bull" : score < -0.15 ? "bg-bear" : "bg-neutral-500";
 }

@@ -1,10 +1,18 @@
 import { SearchExperience } from "@/components/SearchExperience";
-import { getSearchableTickers, getSearchHeat } from "@/lib/queries";
+import { getGlobalSearchableTickers, getGlobalSearchHeat } from "@/lib/queries";
 
-// 独立搜索页：搜索为整页主体 + 搜索热度榜；搜不到 / 数据不足时进入专门提示页。
+// 全站搜索：一个入口搜全部市场——美股 + 中概/港股/A 股。
+// 每个结果按其实际个股页路由（美股→/ticker，中概港股→/cn/ticker）。
 export default function SearchPage() {
-  const valid = getSearchableTickers();        // 有真实数据的标的（校验 + 建议 + 名称映射）
-  const heat = getSearchHeat(10);              // 排行榜兜底：真实社区讨论热度
+  const tickers = getGlobalSearchableTickers();
+  const valid = tickers.map((t) => ({
+    ticker: t.ticker, name: t.name, posts: t.posts,
+    base: t.market === "cn" ? "/cn/ticker" : "/ticker",
+  }));
+  const heat = getGlobalSearchHeat(10).map((h) => ({
+    ticker: h.ticker, name: h.name, mentions: h.mentions, sentiment: h.sentiment,
+    base: h.market === "cn" ? "/cn/ticker" : "/ticker",
+  }));
   const popular = heat.slice(0, 8).map((h) => h.ticker);
   return (
     <div className="max-w-3xl mx-auto">

@@ -13,6 +13,9 @@ const nextConfig = {
   images: { unoptimized: true },
   basePath,
   assetPrefix: basePath || undefined,
+  // 静态导出页数很多(数千页)时，并行 worker 偶发 "Cannot find module for page X.js"
+  // 的导出竞态。串行化生成(单 worker)虽稍慢，但消除该 flaky 错误，保证 out/ 完整。
+  experimental: { workerThreads: false, cpus: 1 },
 };
 
 export default nextConfig;

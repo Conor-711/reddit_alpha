@@ -10,6 +10,7 @@ import { fmtInt, sentTextClass } from "@/lib/format";
 import { getDictionary, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
 import {
   getMarketMood, getMindshare, getTrending, getNarratives, getFeed, getMeta, getTodaysAlpha,
+  getSentimentLeaders,
 } from "@/lib/queries";
 
 const MK = "cn";          // 本页口径：中概股 + 港股
@@ -25,6 +26,7 @@ export default function CnOverview({ params }: { params: { lang: string } }) {
   const mood = getMarketMood(MK);
   const alpha = getTodaysAlpha(3, MK);
   const mind = getMindshare(12, MK);
+  const leaders = getSentimentLeaders(MK, 5);
   const spikes = getTrending(8, false, MK);
   const narratives = getNarratives(6, MK);
   const feed = getFeed({ limit: 6, market: MK });
@@ -59,16 +61,16 @@ export default function CnOverview({ params }: { params: { lang: string } }) {
 
       <AdSlot variant="banner" slot="cn-mid" />
 
-      {/* 第一行：热度榜 + 市场情绪 */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Panel className="lg:col-span-2 p-5">
+      {/* 第一行：热度榜（收窄至 1/2）+ 右列堆叠：市场情绪 / 多空风向标 */}
+      <div className="grid lg:grid-cols-2 gap-4 items-start">
+        <Panel className="p-5">
           <SectionTitle title={t.topTitle} hint={t.topHint} />
           <div className="space-y-1">
             {mind.map((r, i) => (
               <LocaleLink
                 key={r.ticker}
                 href={`${TBASE}/${r.ticker}`}
-                className="grid grid-cols-[20px_88px_1fr_auto] sm:grid-cols-[24px_96px_1fr_120px_64px] items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[.03] transition group"
+                className="grid grid-cols-[20px_88px_1fr_auto] sm:grid-cols-[24px_96px_1fr_96px_56px] items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[.03] transition group"
               >
                 <span className="flex justify-end">
                   {i < 3 ? (
@@ -90,37 +92,77 @@ export default function CnOverview({ params }: { params: { lang: string } }) {
           </div>
         </Panel>
 
-        <Panel className="p-5 flex flex-col">
-          <h2 className="font-display font-bold text-cream mb-1">{t.moodTitle}</h2>
-          {mood ? (
-            <>
-              <MoodGauge value={mood.mood_score} />
-              <div className="text-center -mt-2">
-                <span className={`font-display font-bold text-lg ${sentTextClass(mood.mood_score)}`}>
-                  {mood.label}
-                </span>
-              </div>
-              <div className="mt-4">
-                <div className="flex h-2.5 rounded-full overflow-hidden bg-white/5">
-                  <div className="bg-bull" style={{ width: `${mood.bull_pct}%` }} />
-                  <div className="bg-neutral-600" style={{ width: `${mood.neutral_pct}%` }} />
-                  <div className="bg-bear" style={{ width: `${mood.bear_pct}%` }} />
+        <div className="flex flex-col gap-4">
+          <Panel className="p-5 flex flex-col">
+            <h2 className="font-display font-bold text-cream mb-1">{t.moodTitle}</h2>
+            {mood ? (
+              <>
+                <MoodGauge value={mood.mood_score} />
+                <div className="text-center -mt-2">
+                  <span className={`font-display font-bold text-lg ${sentTextClass(mood.mood_score)}`}>
+                    {mood.label}
+                  </span>
                 </div>
-                <div className="mt-2 flex justify-between text-xs">
-                  <span className="text-bull">{t.moodBull} {mood.bull_pct.toFixed(0)}%</span>
-                  <span className="text-neutral-500">{t.moodNeutral} {mood.neutral_pct.toFixed(0)}%</span>
-                  <span className="text-bear">{t.moodBear} {mood.bear_pct.toFixed(0)}%</span>
+                <div className="mt-4">
+                  <div className="flex h-2.5 rounded-full overflow-hidden bg-white/5">
+                    <div className="bg-bull" style={{ width: `${mood.bull_pct}%` }} />
+                    <div className="bg-neutral-600" style={{ width: `${mood.neutral_pct}%` }} />
+                    <div className="bg-bear" style={{ width: `${mood.bear_pct}%` }} />
+                  </div>
+                  <div className="mt-2 flex justify-between text-xs">
+                    <span className="text-bull">{t.moodBull} {mood.bull_pct.toFixed(0)}%</span>
+                    <span className="text-neutral-500">{t.moodNeutral} {mood.neutral_pct.toFixed(0)}%</span>
+                    <span className="text-bear">{t.moodBear} {mood.bear_pct.toFixed(0)}%</span>
+                  </div>
                 </div>
+                <div className="mt-4 pt-4 border-t border-line grid grid-cols-2 gap-3 text-sm">
+                  <Stat label={t.windowPosts} value={fmtInt(mood.total_posts)} />
+                  <Stat label={t.windowMentions} value={fmtInt(mood.total_mentions)} />
+                </div>
+              </>
+            ) : (
+              <Empty pre={t.emptyPre} />
+            )}
+          </Panel>
+
+          {/* 多空风向标：窗口内最看多 / 最看空的具体标的 */}
+          <Panel className="p-5">
+            <SectionTitle title={t.leadersTitle} hint={t.leadersHint} />
+            {leaders.bullish.length || leaders.bearish.length ? (
+              <div className="grid grid-cols-2 gap-x-5 gap-y-2">
+                {([
+                  { label: t.leadersBull, dot: "bg-bull", rows: leaders.bullish },
+                  { label: t.leadersBear, dot: "bg-bear", rows: leaders.bearish },
+                ] as const).map((col) => (
+                  <div key={col.label}>
+                    <div className="flex items-center gap-1.5 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                      <span className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
+                      {col.label}
+                    </div>
+                    <div className="space-y-0.5">
+                      {col.rows.length ? (
+                        col.rows.map((r) => (
+                          <LocaleLink
+                            key={r.ticker}
+                            href={`${TBASE}/${r.ticker}`}
+                            className="flex items-center justify-between gap-2 px-1.5 py-1 rounded-md hover:bg-white/[.03] transition group"
+                          >
+                            <span className="font-mono text-sm font-semibold text-cream group-hover:text-amber transition truncate">{r.ticker}</span>
+                            <span className="text-xs shrink-0"><ScoreNum score={r.sentiment} /></span>
+                          </LocaleLink>
+                        ))
+                      ) : (
+                        <div className="px-1.5 py-1 text-xs text-neutral-600">{t.leadersEmpty}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="mt-4 pt-4 border-t border-line grid grid-cols-2 gap-3 text-sm">
-                <Stat label={t.windowPosts} value={fmtInt(mood.total_posts)} />
-                <Stat label={t.windowMentions} value={fmtInt(mood.total_mentions)} />
-              </div>
-            </>
-          ) : (
-            <Empty pre={t.emptyPre} />
-          )}
-        </Panel>
+            ) : (
+              <div className="text-sm text-neutral-600 py-4 text-center">{t.leadersEmpty}</div>
+            )}
+          </Panel>
+        </div>
       </div>
 
       {/* 第二行：异动飙升 + 主导叙事 */}

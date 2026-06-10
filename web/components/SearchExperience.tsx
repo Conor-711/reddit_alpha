@@ -10,7 +10,7 @@ import { recordSearch } from "@/lib/searchCounts";
 import { track } from "@/lib/analytics";
 import { SearchLeaderboard, type HeatItem } from "./SearchLeaderboard";
 
-export interface ValidTicker { ticker: string; name: string; posts: number }
+export interface ValidTicker { ticker: string; name: string; posts: number; base?: string }
 
 // 搜索页主体：占据整页的搜索入口 + 搜索热度榜；搜不到 / 数据不足时进入专门提示页。
 export function SearchExperience({
@@ -38,6 +38,12 @@ export function SearchExperience({
     for (const x of valid) m[x.ticker] = x.name;
     return m;
   }, [valid]);
+  // 每个标的的个股页前缀（全站搜索里 美股→/ticker、中概港股→/cn/ticker），缺省回退 tickerBase。
+  const baseOf = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const x of valid) m[x.ticker] = x.base ?? tickerBase;
+    return m;
+  }, [valid, tickerBase]);
 
   const go = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +52,7 @@ export function SearchExperience({
     if (validSet.has(sym)) {
       void recordSearch(sym); // 记一次真实搜索（fire-and-forget）
       track("search", { lang, ticker: sym, meta: { found: true } });
-      router.push(withLang(lang, `${tickerBase}/${encodeURIComponent(sym)}`));
+      router.push(withLang(lang, `${baseOf[sym] ?? tickerBase}/${encodeURIComponent(sym)}`));
     } else {
       track("search", { lang, ticker: sym, meta: { found: false } });
       setMissQ(sym); // 跳提示页
@@ -78,7 +84,7 @@ export function SearchExperience({
             <div className="text-xs text-neutral-500 mb-2">{ts.didYouMean}</div>
             <div className="flex flex-wrap justify-center gap-2">
               {suggestions.map((sym) => (
-                <LocaleLink key={sym} href={`${tickerBase}/${sym}`} className={chipCls}>
+                <LocaleLink key={sym} href={`${baseOf[sym] ?? tickerBase}/${sym}`} className={chipCls}>
                   <span className="font-mono font-semibold">{sym}</span>
                   {names[sym] && <span className="text-neutral-500 ml-1.5 hidden sm:inline">{names[sym]}</span>}
                 </LocaleLink>
@@ -91,7 +97,7 @@ export function SearchExperience({
           <div className="text-xs text-neutral-500 mb-2">{ts.tryPopular}</div>
           <div className="flex flex-wrap justify-center gap-2">
             {popular.slice(0, 8).map((sym) => (
-              <LocaleLink key={sym} href={`/ticker/${sym}`} className={chipCls}>
+              <LocaleLink key={sym} href={`${baseOf[sym] ?? tickerBase}/${sym}`} className={chipCls}>
                 <span className="font-mono font-medium">{sym}</span>
               </LocaleLink>
             ))}
@@ -152,7 +158,7 @@ export function SearchExperience({
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-neutral-500">
             <span>{t.popular}</span>
             {popular.map((sym) => (
-              <LocaleLink key={sym} href={`/ticker/${sym}`} className={chipCls}>
+              <LocaleLink key={sym} href={`${baseOf[sym] ?? tickerBase}/${sym}`} className={chipCls}>
                 <span className="font-mono font-medium">{sym}</span>
               </LocaleLink>
             ))}
@@ -162,7 +168,7 @@ export function SearchExperience({
 
       {/* 搜索热度榜 */}
       <div className="mt-12 sm:mt-16 max-w-xl mx-auto">
-        <SearchLeaderboard heat={heat} names={names} tickerBase={tickerBase} />
+        <SearchLeaderboard heat={heat} names={names} tickerBase={tickerBase} bases={baseOf} />
       </div>
     </div>
   );

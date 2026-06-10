@@ -45,35 +45,22 @@ export function TodaysAlpha({ alphas, tickerBase = "/ticker" }: { alphas: AlphaR
                 <RedditMark size={28} />
               </span>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-[.16em] text-white/85">{t.alphaEyebrow}</span>
-                  <span
-                    className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full text-white"
-                    style={GLASS}
-                  >
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-70" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-                    </span>
-                    {t.alphaWindow}
-                  </span>
-                </div>
-                <h2 className="mt-1.5 font-display font-extrabold text-white text-[clamp(23px,3.2vw,32px)] leading-none tracking-tight drop-shadow-sm">
+                <h2 className="font-display font-extrabold text-white text-[clamp(23px,3.2vw,32px)] leading-none tracking-tight drop-shadow-sm">
                   {t.alphaTitle}
                 </h2>
               </div>
             </div>
             <p className="mt-3 max-w-lg text-[13px] leading-relaxed text-white/85">{t.alphaSub}</p>
           </div>
-          {/* Reddit 吉祥物（宇航员 Snoo），橙底上的白灰角色对比最佳 */}
+          {/* Reddit 吉祥物（宇航员 Snoo），橙底上的白灰角色对比最佳；高度压低，避免标题与卡片间留白 */}
           <SnooCharacter
             n={1}
-            className="hidden md:block h-24 lg:h-32 w-auto -mt-3 -mr-1 shrink-0 drop-shadow-[0_10px_18px_rgba(0,0,0,.30)]"
+            className="hidden md:block h-16 lg:h-20 w-auto -mt-2 -mr-1 shrink-0 drop-shadow-[0_10px_18px_rgba(0,0,0,.30)]"
           />
         </div>
 
         {/* 卡片 */}
-        <div className="mt-6 grid md:grid-cols-3 gap-3.5">
+        <div className="mt-4 grid md:grid-cols-3 gap-3.5">
           {alphas.map((a, i) => (
             <article
               key={a.id}

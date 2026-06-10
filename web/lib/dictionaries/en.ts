@@ -90,7 +90,7 @@ export const en: Dictionary = {
     subBull: "bulls",
     subBear: "bears",
     subPost: ", conviction trends and credible voices — a step ahead of the crowd, and of Wall Street.",
-    placeholder: "Enter a ticker, e.g. NVDA, TSLA, AAPL",
+    placeholder: "Any ticker — US, China or HK, e.g. NVDA, BABA, 0700.HK",
     cta: "Get intel",
     popular: "Popular:",
   },
@@ -223,6 +223,11 @@ export const en: Dictionary = {
     communities: "Communities",
     authors: "Active authors",
     updatedPrefix: "Updated ",
+    postsShort: "posts",
+    commentsShort: "comments",
+    mentionsShort: "mentions",
+    tickersShort: "tickers",
+    communitiesShort: "communities",
   },
   cn: {
     eyebrow: "China ADRs · HK stocks · daily sentiment",
@@ -288,7 +293,7 @@ export const en: Dictionary = {
     viewOnReddit: "View original post & all comments on Reddit ↗",
   },
   comments: {
-    empty: "No comment snapshot fetched for this post yet (top comments are only fetched for popular posts).",
+    empty: "No comment snapshot fetched for this post yet.",
     topBadge: "Top",
   },
   auth: {
@@ -409,6 +414,6 @@ export const en: Dictionary = {
   translate: {
     tabZh: "Chinese",
     tabOriginal: "Original",
-    poweredBy: "Machine translation · for reference",
+    poweredBy: "High-quality model translation",
   },
 };

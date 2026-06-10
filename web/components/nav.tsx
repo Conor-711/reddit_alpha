@@ -13,7 +13,8 @@ export type NavGroup = {
   items: NavItem[];
 };
 
-// 侧边栏分两段：主块=美股（看板/搜索/作者榜），次块=中概·港股·A 股（看板/搜索）。
+// 侧边栏分两段：主块=美股（看板/作者榜），次块=中概·港股·A 股（看板）。
+// 搜索已合并为「全站搜索」，统一入口放在侧边栏顶部（见 Sidebar），两段内不再各自重复搜索项。
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: "us",
@@ -28,7 +29,6 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: "cnSection",
     items: [
       { href: "/cn", key: "dashboard", Icon: IconGrid },
-      { href: "/cn/search", key: "search", Icon: IconSearch },
     ],
   },
 ];

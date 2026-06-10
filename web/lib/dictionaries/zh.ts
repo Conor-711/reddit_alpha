@@ -89,7 +89,7 @@ export const zh = {
     subBull: "多头",
     subBear: "空头",
     subPost: "、信念趋势与可信声音——让你比大众、也比华尔街早一步。",
-    placeholder: "输入股票代码，如 NVDA、TSLA、AAPL",
+    placeholder: "输入股票代码，美股 / 中概 / 港股都行，如 NVDA、BABA、0700.HK",
     cta: "查情报",
     popular: "热门：",
   },
@@ -223,6 +223,12 @@ export const zh = {
     communities: "追踪社区",
     authors: "活跃作者",
     updatedPrefix: "更新于 ",
+    // 顶部 banner 用的精简标签
+    postsShort: "帖",
+    commentsShort: "评论",
+    mentionsShort: "提及",
+    tickersShort: "标的",
+    communitiesShort: "社区",
   },
   cn: {
     eyebrow: "中概股 · 港股 · 每日舆情",
@@ -288,7 +294,7 @@ export const zh = {
     viewOnReddit: "在 Reddit 查看原帖与全部评论 ↗",
   },
   comments: {
-    empty: "本帖暂未抓取评论快照（当前仅对热门帖抓取了高赞评论）。",
+    empty: "本帖暂未抓取评论快照。",
     topBadge: "高赞",
   },
   auth: {
@@ -409,7 +415,7 @@ export const zh = {
   translate: {
     tabZh: "中文译文",
     tabOriginal: "原文",
-    poweredBy: "机器翻译 · 仅供参考",
+    poweredBy: "高质量模型翻译结果",
   },
 };
 
