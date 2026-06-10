@@ -15,6 +15,11 @@ export function LanguageSwitcher() {
 
   const go = (target: Locale) => {
     if (target === lang) return;
+    try {
+      localStorage.setItem("redditalpha:lang", target);
+    } catch {
+      /* ignore */
+    }
     const tail = rest === "/" ? "" : rest;
     router.push(`/${target}${tail}`);
   };
