@@ -38,6 +38,8 @@
 | 活跃时段 | `analytics_hourly` | UTC+8 24 小时分布 |
 | 内容意图 | `analytics_search_terms` | 站内搜索词 + 命中数（内容缺口） |
 | 转化 | `analytics_funnel` | 落地→看板→个股→帖子→分享（各阶段独立访客） |
+| 留存 | `analytics_retention` | N 日留存曲线 + 按获取日期的同期群三角（UTC+8） |
+| 变现 | `analytics_inventory` | 月广告展示/访客/会话（供前端估 eCPM） |
 | 明细 | `analytics_recent` / `analytics_event_breakdown` / `analytics_top_tickers` / `analytics_lang_split` / `analytics_shares` | 事件流与分布 |
 
 ## 两大用途映射
@@ -47,4 +49,5 @@
 ## 迁移文件
 `supabase/migrations/` 下按序执行（或连 GitHub 自动应用）：
 `…_analytics.sql`（基础）→ `…_engagement.sql` → `…_admins.sql` → `…_purge_pre_launch_events.sql`
-→ `…_traffic_sources_external.sql` → `…_pro_analytics.sql`（本次：受众/渠道/留存/时段/漏斗/搜索词/滚动）。
+→ `…_traffic_sources_external.sql` → `…_pro_analytics.sql`（受众/渠道/时段/漏斗/搜索词/滚动）
+→ `…_retention_inventory.sql`（N 日留存同期群 + 广告库存量/eCPM）。

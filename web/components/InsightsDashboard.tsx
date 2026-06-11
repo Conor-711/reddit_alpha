@@ -31,10 +31,13 @@ interface Audience {
 interface Channels { channels: KN[]; campaigns: KN[] }
 interface Funnel { landing: number; dashboard: number; ticker: number; post: number; share: number }
 interface SearchTerm { term: string; n: number; found: number }
+interface Retention { max: number; cohorts: { date: string; size: number; pct: (number | null)[] }[]; curve: { d: number; pct: number | null }[] }
+interface Inventory { days: number; impressions: number; visitors: number; sessions: number }
 interface Data {
   overview: Overview; engagement: Engagement | null; engagedPaths: EngagedPath[];
   audience: Audience | null; channels: Channels | null; funnel: Funnel | null;
   hourly: { hour: number; n: number }[]; searchTerms: SearchTerm[];
+  retention: Retention | null; inventory: Inventory | null;
   daily: Daily[]; topPaths: Pair[];
   events: Pair[]; tickers: Pair[]; langs: Pair[];
   sources: Pair[]; shares: Pair[]; recent: Recent[];
@@ -59,7 +62,7 @@ export function InsightsDashboard() {
   const load = useCallback(async () => {
     setFetching(true);
     setFailed(false);
-    const [overview, engagement, engagedPaths, audience, channels, funnel, hourly, searchTerms, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
+    const [overview, engagement, engagedPaths, audience, channels, funnel, hourly, searchTerms, retention, inventory, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
       analyticsRpc<Overview>("analytics_overview"),
       analyticsRpc<Engagement>("analytics_engagement", { p_days: 30 }),
       analyticsRpc<EngagedPath[]>("analytics_top_paths_engaged", { p_limit: 8, p_days: 30 }),
@@ -68,6 +71,8 @@ export function InsightsDashboard() {
       analyticsRpc<Funnel>("analytics_funnel", { p_days: 30 }),
       analyticsRpc<{ hour: number; n: number }[]>("analytics_hourly", { p_days: 30 }),
       analyticsRpc<SearchTerm[]>("analytics_search_terms", { p_limit: 12, p_days: 30 }),
+      analyticsRpc<Retention>("analytics_retention", { p_days: 21, p_max: 7 }),
+      analyticsRpc<Inventory>("analytics_inventory", { p_days: 30 }),
       analyticsRpc<Daily[]>("analytics_daily", { p_days: 14 }),
       analyticsRpc<{ path: string; views: number }[]>("analytics_top_paths", { p_limit: 8, p_days: 30 }),
       analyticsRpc<{ event_type: string; n: number }[]>("analytics_event_breakdown", { p_days: 30 }),
@@ -90,6 +95,8 @@ export function InsightsDashboard() {
         funnel: funnel ?? null,
         hourly: hourly ?? [],
         searchTerms: searchTerms ?? [],
+        retention: retention ?? null,
+        inventory: inventory ?? null,
         daily: daily ?? [],
         topPaths: (topPaths ?? []).map((r) => ({ label: r.path, value: Number(r.views) })),
         events: (events ?? []).map((r) => ({ label: r.event_type, value: Number(r.n) })),
@@ -215,6 +222,18 @@ export function InsightsDashboard() {
             </>
           )}
 
+          {/* —— 留存（同期群）：新访客第 N 天还回来吗 —— */}
+          {data.retention && data.retention.cohorts.length > 0 && (
+            <>
+              <SectionLabel hint={t.secRetentionHint}>{t.secRetention}</SectionLabel>
+              <div className="grid lg:grid-cols-2 gap-4">
+                <Card title={t.retCurveTitle}><RetentionCurve r={data.retention} /></Card>
+                <Card title={t.retCohortTitle}><CohortTable r={data.retention} t={t} /></Card>
+              </div>
+              <p className="text-[11px] text-neutral-500 -mt-1">{t.retNote}</p>
+            </>
+          )}
+
           {/* —— 内容与意图（看什么、搜什么、读多深）—— */}
           <SectionLabel hint={t.secBehaviorHint}>{t.secBehavior}</SectionLabel>
           <Card title={t.topPagesEngaged}><EngagedPaths rows={data.engagedPaths} t={t} /></Card>
@@ -261,6 +280,9 @@ export function InsightsDashboard() {
                   </p>
                 )}
               </div>
+              {data.inventory && (
+                <Card title={t.ecpmTitle}><EcpmView inv={data.inventory} t={t} /></Card>
+              )}
             </>
           )}
 
@@ -441,6 +463,130 @@ function FunnelView({ f, t }: { f: Funnel; t: { stLanding: string; stDashboard: 
         );
       })}
     </ul>
+  );
+}
+
+// N 日留存曲线（聚合，按已满 n 天的同期群加权）
+function RetentionCurve({ r }: { r: Retention }) {
+  return (
+    <div className="flex items-end gap-2 h-28">
+      {r.curve.map((p) => (
+        <div key={p.d} className="flex-1 flex flex-col items-center justify-end">
+          <span className="text-[10px] font-mono text-neutral-400 mb-1">{p.pct == null ? "·" : `${p.pct}%`}</span>
+          <div
+            className="w-full rounded-t bg-reddit/60"
+            style={{ height: `${p.pct == null ? 2 : Math.max(2, p.pct)}%` }}
+            title={`D${p.d} · ${p.pct ?? "—"}%`}
+          />
+          <span className="mt-1 text-[10px] font-mono text-neutral-500">D{p.d}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// 同期群三角（行=获取日期，列=D0..Dmax，单元格=留存%热力）
+function CohortTable({ r, t }: { r: Retention; t: { retColCohort: string; retColSize: string; noData: string } }) {
+  if (!r.cohorts.length) return <p className="text-sm text-neutral-600 py-2">{t.noData}</p>;
+  const cols = r.max + 1;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[12px]">
+        <thead>
+          <tr className="text-[10px] uppercase tracking-wider text-neutral-500 text-left">
+            <th className="font-medium pb-2 pr-2">{t.retColCohort}</th>
+            <th className="font-medium pb-2 pr-2 text-right">{t.retColSize}</th>
+            {Array.from({ length: cols }).map((_, i) => (
+              <th key={i} className="font-medium pb-2 px-1 text-center font-mono">D{i}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {r.cohorts.map((c) => (
+            <tr key={c.date} className="border-t border-line/50">
+              <td className="py-1 pr-2 font-mono text-neutral-300 whitespace-nowrap">{c.date.slice(5)}</td>
+              <td className="py-1 pr-2 text-right font-mono tabular text-neutral-400">{c.size}</td>
+              {Array.from({ length: cols }).map((_, i) => {
+                const v = c.pct[i];
+                return (
+                  <td key={i} className="py-1 px-0.5 text-center">
+                    {v == null ? (
+                      <span className="text-neutral-700">·</span>
+                    ) : (
+                      <span
+                        className="inline-block min-w-[26px] rounded px-1 py-0.5 text-[11px] font-mono tabular text-neutral-50"
+                        style={{ backgroundColor: `rgba(255,69,0,${(0.1 + (v / 100) * 0.6).toFixed(3)})` }}
+                      >
+                        {v}
+                      </span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// 美元紧凑格式
+function fmtUsd(n: number): string {
+  const v = Math.round(n);
+  if (v >= 1000) return `$${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k`;
+  return `$${v}`;
+}
+
+// 广告位 eCPM 估算：按月广告展示 × 各情景 eCPM × 填充率
+function EcpmView({
+  inv,
+  t,
+}: {
+  inv: Inventory;
+  t: {
+    ecpmImpr: string; ecpmPerMonth: string; ecpmColTier: string; ecpmColCpm: string; ecpmColRev: string;
+    ecpmLow: string; ecpmMid: string; ecpmHigh: string; ecpmAssume: string;
+  };
+}) {
+  const SLOTS = 2;
+  const FILL = 0.7;
+  const monthlyViews = inv.days > 0 ? inv.impressions * (30 / inv.days) : inv.impressions;
+  const adImpr = monthlyViews * SLOTS;
+  const tiers = [
+    { label: t.ecpmLow, cpm: 6 },
+    { label: t.ecpmMid, cpm: 12 },
+    { label: t.ecpmHigh, cpm: 22 },
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="flex items-baseline gap-2">
+        <span className="text-[11px] uppercase tracking-wider text-neutral-500">{t.ecpmImpr}</span>
+        <span className="font-mono font-bold text-cream text-[18px] tabular">{fmtInt(Math.round(adImpr))}</span>
+        <span className="text-[11px] text-neutral-500">/ {t.ecpmPerMonth}</span>
+      </div>
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-[11px] uppercase tracking-wider text-neutral-500 text-left">
+            <th className="font-medium pb-2">{t.ecpmColTier}</th>
+            <th className="font-medium pb-2 text-right">{t.ecpmColCpm}</th>
+            <th className="font-medium pb-2 text-right">{t.ecpmColRev}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tiers.map((ti) => (
+            <tr key={ti.label} className="border-t border-line/60">
+              <td className="py-1.5 text-neutral-300">{ti.label}</td>
+              <td className="py-1.5 text-right font-mono tabular text-neutral-400">${ti.cpm.toFixed(2)}</td>
+              <td className="py-1.5 text-right font-mono tabular text-bull">{fmtUsd((adImpr / 1000) * ti.cpm * FILL)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-[11px] text-neutral-500">
+        {t.ecpmAssume.replace("{slots}", String(SLOTS)).replace("{fill}", String(Math.round(FILL * 100)))}
+      </p>
+    </div>
   );
 }
 
