@@ -28,6 +28,14 @@ subreddits:
   - name: thetagang
     weight: 1.0
     market: us
+  # 杠杆 ETF（YOLO 赌狗：TQQQ/SOXL/3x 海力士等 n 倍做多 ETF）。
+  # 用户说的「r/LETF」实际活跃版是 r/LETFs（复数）；r/TQQQ 为 $TQQQ 单股社区。
+  - name: LETFs
+    weight: 0.8
+    market: us
+  - name: TQQQ
+    weight: 0.7
+    market: us
   # ---------------- 中概股 + 港股 ----------------
   # 实测活跃（Arctic Shift）：HKstocks/ChinaStocks/InvestingChina 为综合板块，
   # Tencent/BABA/Alibaba/NIO 为个股社区，HSI 为恒生指数。纯沪深 A 股英文社区基本已死，
