@@ -11,6 +11,8 @@ web/.env
 
 # Data / DB（仅忽略根目录 data/ 下的运行期库，pipeline/data 字典样本照常入库）
 data/*.db
+# 例外：dev.db 是线上 Railway 部署用的「真实数据快照」(本地 make daily 产出)，必须入库。
+!data/dev.db
 data/*.db-wal
 data/*.db-shm
 data/sec_company_tickers.json
