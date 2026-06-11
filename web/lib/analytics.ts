@@ -6,6 +6,26 @@ import { supabase } from "./supabase";
 
 const VKEY = "redditalpha:vid"; // 持久访客 id（localStorage）
 const SKEY = "redditalpha:sid"; // 会话 id（sessionStorage）
+const DNT = "redditalpha:dnt"; // 「不记录本设备」标记（管理员/自己），排除自有访问
+
+// 本设备是否已选择「排除我的访问」。开启后 track() 直接静默返回，事件根本不写入。
+export function isTrackingDisabled(): boolean {
+  try {
+    return localStorage.getItem(DNT) === "1";
+  } catch {
+    return false;
+  }
+}
+
+// 开/关「排除本设备访问」。登录为管理员时会自动开启（见 AuthProvider），也可手动切换。
+export function setTrackingDisabled(off: boolean): void {
+  try {
+    if (off) localStorage.setItem(DNT, "1");
+    else localStorage.removeItem(DNT);
+  } catch {
+    /* ignore */
+  }
+}
 
 function uid(): string {
   try {
@@ -51,6 +71,7 @@ export interface TrackProps {
 // 记录一次行为事件（fire-and-forget；不阻塞、不报错冒泡）。
 export function track(eventType: string, props: TrackProps = {}): void {
   if (!supabase || typeof window === "undefined") return;
+  if (isTrackingDisabled()) return; // 本设备已选择「排除我的访问」→ 不记录
   let ref: string | null = null;
   try {
     ref = document.referrer ? new URL(document.referrer).host : null;

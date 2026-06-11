@@ -149,6 +149,9 @@ export const zh = {
     colPath: "页面",
     trafficSources: "流量来源",
     sharesTitle: "分享次数 · 按平台",
+    dntOn: "已排除我的访问",
+    dntOff: "排除我的访问",
+    dntHint: "开启后，本设备/浏览器的访问不再计入统计。以管理员登录时会自动开启。",
   },
   share: {
     label: "分享",

@@ -148,6 +148,9 @@ export const en: Dictionary = {
     colPath: "Path",
     trafficSources: "Traffic sources",
     sharesTitle: "Shares · by platform",
+    dntOn: "My visits excluded",
+    dntOff: "Exclude my visits",
+    dntHint: "When on, visits from this device/browser are no longer counted. Auto-enabled when you sign in as admin.",
   },
   share: {
     label: "Share",

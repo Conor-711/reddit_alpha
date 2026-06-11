@@ -5,7 +5,7 @@ import { LocaleLink } from "./i18n/LocaleLink";
 import { useLocale } from "./i18n/LocaleProvider";
 import { useAuth } from "./auth/AuthProvider";
 import { isAdminEmail } from "@/lib/admin";
-import { analyticsRpc } from "@/lib/analytics";
+import { analyticsRpc, isTrackingDisabled, setTrackingDisabled } from "@/lib/analytics";
 import { fmtInt, fmtCompact } from "@/lib/format";
 
 interface Overview {
@@ -29,6 +29,8 @@ export function InsightsDashboard() {
   const [data, setData] = useState<Data | null>(null);
   const [fetching, setFetching] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [dnt, setDnt] = useState(false); // 本设备是否「排除我的访问」
+  useEffect(() => setDnt(isTrackingDisabled()), []);
 
   const load = useCallback(async () => {
     setFetching(true);
@@ -98,13 +100,26 @@ export function InsightsDashboard() {
           <h1 className="mt-1 font-display font-extrabold text-cream tracking-tight text-[26px] leading-tight">{t.title}</h1>
           <p className="mt-1 text-sm text-neutral-500">{t.subtitle}</p>
         </div>
-        <button
-          onClick={() => void load()}
-          disabled={fetching}
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-neutral-300 bg-white/[.04] ring-1 ring-inset ring-line hover:text-cream hover:bg-white/[.07] transition disabled:opacity-50"
-        >
-          <RefreshIcon spinning={fetching} /> {t.refresh}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* 排除我自己的访问：本设备开关（登录为管理员时已自动开启） */}
+          <button
+            onClick={() => { const v = !dnt; setTrackingDisabled(v); setDnt(v); }}
+            title={t.dntHint}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold ring-1 ring-inset transition ${
+              dnt ? "text-bull bg-bull/10 ring-bull/30" : "text-neutral-400 bg-white/[.04] ring-line hover:text-cream hover:bg-white/[.07]"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${dnt ? "bg-bull" : "bg-neutral-500"}`} />
+            {dnt ? t.dntOn : t.dntOff}
+          </button>
+          <button
+            onClick={() => void load()}
+            disabled={fetching}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-neutral-300 bg-white/[.04] ring-1 ring-inset ring-line hover:text-cream hover:bg-white/[.07] transition disabled:opacity-50"
+          >
+            <RefreshIcon spinning={fetching} /> {t.refresh}
+          </button>
+        </div>
       </div>
 
       {failed && <Notice tone="warn">{t.needMigration}</Notice>}

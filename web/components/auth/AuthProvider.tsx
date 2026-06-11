@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase, isAuthConfigured } from "@/lib/supabase";
+import { isAdminEmail } from "@/lib/admin";
+import { setTrackingDisabled } from "@/lib/analytics";
 
 type AuthState = {
   user: User | null;
@@ -28,13 +30,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     let active = true;
+    // 登录为管理员（=自己）时，自动把本设备标记为「不记录」，从而排除自有访问。
+    // 只自动「开启」、不自动关闭——清除需在数据看板里手动切换。
+    const apply = (u: User | null) => {
+      setUser(u);
+      if (u && isAdminEmail(u.email)) setTrackingDisabled(true);
+    };
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      setUser(data.session?.user ?? null);
+      apply(data.session?.user ?? null);
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      apply(session?.user ?? null);
       setLoading(false);
     });
     return () => {
