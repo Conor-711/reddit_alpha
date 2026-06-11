@@ -99,17 +99,41 @@ export function LegendsCarousel({
 
   return (
     <div className="relative">
-      {/* 聚光灯光束（固定中心，照亮被居中的那张卡） */}
-      <div className="pointer-events-none absolute left-1/2 -top-1 -translate-x-1/2 z-0 w-12 h-2.5 rounded-full bg-reddit/70 blur-[6px]" aria-hidden />
-      <div
-        className="pointer-events-none absolute left-1/2 top-[-6%] -translate-x-1/2 z-0 h-[112%] w-[300px] sm:w-[360px]"
-        style={{
-          background: "linear-gradient(180deg, rgba(255,69,0,.24), rgba(255,69,0,.06) 52%, transparent 82%)",
-          clipPath: "polygon(41% 0, 59% 0, 100% 100%, 0 100%)",
-          filter: "blur(9px)",
-        }}
-        aria-hidden
-      />
+      {/* ===================== 舞台聚光灯 ===================== */}
+      {/* 固定在正中：灯头灯芯 + 内外双层光锥 + 落地光池，照亮被居中的那张卡。 */}
+      <div className="relative">
+        {/* 灯头：顶部一颗高亮灯芯（外晕 + 暖白内核）*/}
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-2 z-0 h-2 w-24 rounded-full bg-reddit blur-[6px] opacity-70" aria-hidden />
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-[7px] z-0 h-1.5 w-9 rounded-full bg-amber-200 blur-[3px] opacity-90" aria-hidden />
+        {/* 外光锥：柔和扩散的梯形光束 */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-[-5%] -translate-x-1/2 z-0 h-[120%] w-[360px] sm:w-[460px]"
+          style={{
+            background: "linear-gradient(180deg, rgba(255,99,40,.24), rgba(255,69,0,.07) 50%, transparent 84%)",
+            clipPath: "polygon(45% 0, 55% 0, 94% 100%, 6% 100%)",
+            filter: "blur(16px)",
+          }}
+          aria-hidden
+        />
+        {/* 内光锥：更亮更窄的「热核」*/}
+        <div
+          className="pointer-events-none absolute left-1/2 top-[-5%] -translate-x-1/2 z-0 h-[120%] w-[180px] sm:w-[230px]"
+          style={{
+            background: "linear-gradient(180deg, rgba(255,160,100,.30), rgba(255,69,0,.06) 56%, transparent 80%)",
+            clipPath: "polygon(46% 0, 54% 0, 82% 100%, 18% 100%)",
+            filter: "blur(10px)",
+          }}
+          aria-hidden
+        />
+        {/* 落地光池：光束打到「舞台地面」的椭圆光晕，落在居中卡底部 */}
+        <div
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-5 z-0 h-20 w-[280px] sm:w-[360px]"
+          style={{
+            background: "radial-gradient(50% 60% at 50% 50%, rgba(255,69,0,.20), rgba(255,69,0,.04) 62%, transparent 76%)",
+            filter: "blur(9px)",
+          }}
+          aria-hidden
+        />
 
       {/* 左右箭头 */}
       <button
@@ -136,6 +160,10 @@ export function LegendsCarousel({
         ref={ref}
         onScroll={recompute}
         className="relative z-10 flex items-stretch gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth py-6 px-[calc(50%-160px)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{
+          WebkitMaskImage: "linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%)",
+          maskImage: "linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%)",
+        }}
       >
         {legends.map((L, i) => {
           const on = i === active;
@@ -145,15 +173,19 @@ export function LegendsCarousel({
               data-card
               className={`snap-center shrink-0 w-[320px] rounded-2xl p-5 flex flex-col panel transition-all duration-300 ease-out ${
                 on
-                  ? "opacity-100 scale-100 ring-2 ring-reddit/50 shadow-[0_22px_55px_-15px_rgba(255,69,0,.55)]"
-                  : "opacity-45 scale-[0.86] saturate-[.65]"
+                  ? "opacity-100 scale-100 ring-1 ring-reddit/55 shadow-[0_28px_64px_-18px_rgba(255,69,0,.6),inset_0_1px_0_rgba(255,255,255,.12),inset_0_20px_44px_-22px_rgba(255,120,60,.55)]"
+                  : "opacity-45 scale-[0.85] saturate-[.6] brightness-[.85]"
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/[.05] text-neutral-400 ring-1 ring-inset ring-white/10">
                   {L.year}
                 </span>
-                <span className={`text-[10px] font-bold uppercase tracking-wider text-reddit transition ${on ? "opacity-100" : "opacity-0"}`}>
+                <span
+                  className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 transition-all duration-300 ${
+                    on ? "opacity-100 text-reddit bg-reddit/[.12] ring-1 ring-inset ring-reddit/30" : "opacity-0"
+                  }`}
+                >
                   ★ {spotlight}
                 </span>
               </div>
@@ -192,6 +224,8 @@ export function LegendsCarousel({
           );
         })}
       </div>
+      </div>
+      {/* =================== /舞台聚光灯 =================== */}
 
       {/* 圆点导航 */}
       <div className="mt-1 flex items-center justify-center gap-1.5">
