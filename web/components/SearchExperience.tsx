@@ -51,10 +51,10 @@ export function SearchExperience({
     if (!sym) return;
     if (validSet.has(sym)) {
       void recordSearch(sym); // 记一次真实搜索（fire-and-forget）
-      track("search", { lang, ticker: sym, meta: { found: true } });
+      track("search", { lang, ticker: sym, meta: { found: true, q: sym } });
       router.push(withLang(lang, `${baseOf[sym] ?? tickerBase}/${encodeURIComponent(sym)}`));
     } else {
-      track("search", { lang, ticker: sym, meta: { found: false } });
+      track("search", { lang, ticker: sym, meta: { found: false, q: sym } });
       setMissQ(sym); // 跳提示页
     }
   };

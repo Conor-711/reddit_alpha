@@ -22,12 +22,27 @@ interface Engagement {
   avg_clicks_per_visitor: number; avg_clicks_per_session: number;
   bounce_rate: number;
 }
-interface EngagedPath { path: string; views: number; visitors: number; avg_seconds: number; clicks: number }
+interface EngagedPath { path: string; views: number; visitors: number; avg_seconds: number; clicks: number; avg_scroll: number }
+type KN = { k: string; n: number };
+interface Audience {
+  devices: KN[]; browsers: KN[]; os: KN[]; languages: KN[]; timezones: KN[];
+  new_visitors: number; returning_visitors: number; visitors: number; sessions: number;
+}
+interface Channels { channels: KN[]; campaigns: KN[] }
+interface Funnel { landing: number; dashboard: number; ticker: number; post: number; share: number }
+interface SearchTerm { term: string; n: number; found: number }
 interface Data {
   overview: Overview; engagement: Engagement | null; engagedPaths: EngagedPath[];
+  audience: Audience | null; channels: Channels | null; funnel: Funnel | null;
+  hourly: { hour: number; n: number }[]; searchTerms: SearchTerm[];
   daily: Daily[]; topPaths: Pair[];
   events: Pair[]; tickers: Pair[]; langs: Pair[];
   sources: Pair[]; shares: Pair[]; recent: Recent[];
+}
+
+// KN[]（{k,n}）→ BarList 用的 {label,value}
+function kn(arr?: KN[] | null): Pair[] {
+  return (arr ?? []).map((r) => ({ label: r.k, value: Number(r.n) }));
 }
 
 export function InsightsDashboard() {
@@ -44,10 +59,15 @@ export function InsightsDashboard() {
   const load = useCallback(async () => {
     setFetching(true);
     setFailed(false);
-    const [overview, engagement, engagedPaths, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
+    const [overview, engagement, engagedPaths, audience, channels, funnel, hourly, searchTerms, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
       analyticsRpc<Overview>("analytics_overview"),
       analyticsRpc<Engagement>("analytics_engagement", { p_days: 30 }),
       analyticsRpc<EngagedPath[]>("analytics_top_paths_engaged", { p_limit: 8, p_days: 30 }),
+      analyticsRpc<Audience>("analytics_audience", { p_days: 30 }),
+      analyticsRpc<Channels>("analytics_channels", { p_days: 30 }),
+      analyticsRpc<Funnel>("analytics_funnel", { p_days: 30 }),
+      analyticsRpc<{ hour: number; n: number }[]>("analytics_hourly", { p_days: 30 }),
+      analyticsRpc<SearchTerm[]>("analytics_search_terms", { p_limit: 12, p_days: 30 }),
       analyticsRpc<Daily[]>("analytics_daily", { p_days: 14 }),
       analyticsRpc<{ path: string; views: number }[]>("analytics_top_paths", { p_limit: 8, p_days: 30 }),
       analyticsRpc<{ event_type: string; n: number }[]>("analytics_event_breakdown", { p_days: 30 }),
@@ -65,6 +85,11 @@ export function InsightsDashboard() {
         overview,
         engagement: engagement ?? null,
         engagedPaths: engagedPaths ?? [],
+        audience: audience ?? null,
+        channels: channels ?? null,
+        funnel: funnel ?? null,
+        hourly: hourly ?? [],
+        searchTerms: searchTerms ?? [],
         daily: daily ?? [],
         topPaths: (topPaths ?? []).map((r) => ({ label: r.path, value: Number(r.views) })),
         events: (events ?? []).map((r) => ({ label: r.event_type, value: Number(r.n) })),
@@ -159,51 +184,88 @@ export function InsightsDashboard() {
                 <Kpi label={t.engPagesVisitor} text={data.engagement.avg_pages_per_visitor.toFixed(1)} sub={`${t.perSession} ${data.engagement.avg_pages_per_session.toFixed(1)}`} />
                 <Kpi label={t.engBounce} text={`${Math.round(data.engagement.bounce_rate)}%`} sub={t.bounceHint} />
               </div>
-              {/* 广告主一句话概览（可直接截图给广告主）*/}
-              <div className="rounded-2xl ring-1 ring-inset ring-reddit/25 bg-reddit/[.06] px-4 py-3 text-[13px] text-neutral-300 leading-relaxed">
-                <span className="font-semibold text-reddit">{t.adPitchLabel}</span>{" "}
-                {t.adPitch
-                  .replace("{visitors}", fmtInt(data.engagement.visitors))
-                  .replace("{dwell}", fmtDur(data.engagement.avg_visitor_seconds))
-                  .replace("{pages}", data.engagement.avg_pages_per_session.toFixed(1))
-                  .replace("{clicks}", data.engagement.avg_clicks_per_visitor.toFixed(1))}
+            </>
+          )}
+
+          {/* —— 获取渠道（用户从哪来）—— */}
+          <SectionLabel hint={t.secAcqHint}>{t.secAcq}</SectionLabel>
+          <div className="grid md:grid-cols-3 gap-4">
+            <Card title={t.chanTitle}><BarList items={kn(data.channels?.channels)} empty={t.noData} unit={t.unit} /></Card>
+            <Card title={t.campaignTitle}><BarList items={kn(data.channels?.campaigns)} empty={t.noData} unit={t.unit} mono /></Card>
+            <Card title={t.trafficSources}><BarList items={data.sources} empty={t.noData} unit={t.unit} mono /></Card>
+          </div>
+
+          {/* —— 受众画像（他们是谁）—— */}
+          {data.audience && (
+            <>
+              <SectionLabel hint={t.secAudienceHint}>{t.secAudience}</SectionLabel>
+              <div className="grid grid-cols-3 gap-3">
+                <Kpi label={t.audNew} value={data.audience.new_visitors} />
+                <Kpi label={t.audReturning} value={data.audience.returning_visitors} />
+                <Kpi accent label={t.audReturnRate} text={`${pct(data.audience.returning_visitors, data.audience.visitors)}%`} sub={t.audReturnHint} />
+              </div>
+              <div className="grid md:grid-cols-3 gap-4">
+                <Card title={t.deviceTitle}><BarList items={kn(data.audience.devices)} empty={t.noData} unit={t.unit} /></Card>
+                <Card title={t.browserTitle}><BarList items={kn(data.audience.browsers)} empty={t.noData} unit={t.unit} /></Card>
+                <Card title={t.osTitle}><BarList items={kn(data.audience.os)} empty={t.noData} unit={t.unit} /></Card>
+                <Card title={t.tzTitle}><BarList items={kn(data.audience.timezones)} empty={t.noData} unit={t.unit} mono /></Card>
+                <Card title={t.langSplit}><BarList items={data.langs} empty={t.noData} unit={t.unit} /></Card>
+                <Card title={t.activeHours}><HourBars data={data.hourly} hint={t.activeHoursHint} /></Card>
               </div>
             </>
           )}
 
-          {/* 趋势 */}
-          <Card title={t.trendTitle}>
-            <Trend daily={data.daily} viewsLabel={t.trendViews} />
-          </Card>
-
-          {/* 用户最爱逛的页面（含停留 / 访客 / 点击）—— 整宽表 */}
-          <Card title={t.topPagesEngaged}>
-            <EngagedPaths rows={data.engagedPaths} t={t} />
-          </Card>
-
-          {/* 分布网格 */}
+          {/* —— 内容与意图（看什么、搜什么、读多深）—— */}
+          <SectionLabel hint={t.secBehaviorHint}>{t.secBehavior}</SectionLabel>
+          <Card title={t.topPagesEngaged}><EngagedPaths rows={data.engagedPaths} t={t} /></Card>
           <div className="grid md:grid-cols-2 gap-4">
-            <Card title={t.eventsTitle}>
-              <BarList items={data.events} empty={t.noData} unit={t.unit} />
-            </Card>
-            <Card title={t.topTickers}>
-              <BarList items={data.tickers} empty={t.noData} unit={t.unit} mono />
-            </Card>
-            <Card title={t.langSplit}>
-              <BarList items={data.langs} empty={t.noData} unit={t.unit} />
-            </Card>
-            <Card title={t.trafficSources}>
-              <BarList items={data.sources} empty={t.noData} unit={t.unit} mono />
-            </Card>
-            <Card title={t.sharesTitle}>
-              <BarList items={data.shares} empty={t.noData} unit={t.unit} />
-            </Card>
+            <Card title={t.searchTermsTitle}><SearchTerms rows={data.searchTerms} t={t} /></Card>
+            <Card title={t.topTickers}><BarList items={data.tickers} empty={t.noData} unit={t.unit} mono /></Card>
           </div>
 
+          {/* —— 转化漏斗 —— */}
+          {data.funnel && (
+            <>
+              <SectionLabel hint={t.funnelHint}>{t.funnelTitle}</SectionLabel>
+              <Card title={t.funnelTitle}><FunnelView f={data.funnel} t={t} /></Card>
+            </>
+          )}
+
+          {/* 趋势 + 事件 / 分享分布 */}
+          <Card title={t.trendTitle}><Trend daily={data.daily} viewsLabel={t.trendViews} /></Card>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card title={t.eventsTitle}><BarList items={data.events} empty={t.noData} unit={t.unit} /></Card>
+            <Card title={t.sharesTitle}><BarList items={data.shares} empty={t.noData} unit={t.unit} /></Card>
+          </div>
+
+          {/* —— 广告主视角（可直接用于招商 / media kit）—— */}
+          {data.engagement && (
+            <>
+              <SectionLabel hint={t.secAdsHint}>{t.secAds}</SectionLabel>
+              <div className="rounded-2xl ring-1 ring-inset ring-reddit/25 bg-reddit/[.06] px-4 py-3.5 text-[13px] text-neutral-200 leading-relaxed space-y-1.5">
+                <p>
+                  <span className="font-semibold text-reddit">{t.adPitchLabel}</span>{" "}
+                  {t.adPitch
+                    .replace("{visitors}", fmtInt(data.engagement.visitors))
+                    .replace("{dwell}", fmtDur(data.engagement.avg_visitor_seconds))
+                    .replace("{pages}", data.engagement.avg_pages_per_session.toFixed(1))
+                    .replace("{clicks}", data.engagement.avg_clicks_per_visitor.toFixed(1))}
+                </p>
+                {data.audience && (
+                  <p className="text-neutral-400">
+                    <span className="font-semibold text-neutral-300">{t.adComposeLabel}</span>{" "}
+                    {t.adAudience
+                      .replace("{device}", topLabel(data.audience.devices) || "—")
+                      .replace("{ret}", `${pct(data.audience.returning_visitors, data.audience.visitors)}%`)
+                      .replace("{channel}", topChannel(data.channels) || "—")}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
           {/* 最近事件 */}
-          <Card title={t.recent}>
-            <RecentTable rows={data.recent} t={t} />
-          </Card>
+          <Card title={t.recent}><RecentTable rows={data.recent} t={t} /></Card>
         </>
       )}
     </div>
@@ -258,8 +320,8 @@ function SectionLabel({ children, hint }: { children: React.ReactNode; hint?: st
   );
 }
 
-// 最爱页面（含停留 / 独立访客 / 点击）
-function EngagedPaths({ rows, t }: { rows: EngagedPath[]; t: { noData: string; colPath: string; colViews: string; colVisitors: string; colDwell: string; colClicks: string } }) {
+// 最爱页面（含停留 / 独立访客 / 滚动深度 / 点击）
+function EngagedPaths({ rows, t }: { rows: EngagedPath[]; t: { noData: string; colPath: string; colViews: string; colVisitors: string; colDwell: string; colClicks: string; colScroll: string } }) {
   if (!rows.length) return <p className="text-sm text-neutral-600 py-2">{t.noData}</p>;
   const max = Math.max(1, ...rows.map((r) => r.views));
   return (
@@ -271,6 +333,7 @@ function EngagedPaths({ rows, t }: { rows: EngagedPath[]; t: { noData: string; c
             <th className="font-medium pb-2 text-right">{t.colViews}</th>
             <th className="font-medium pb-2 text-right hidden sm:table-cell">{t.colVisitors}</th>
             <th className="font-medium pb-2 text-right">{t.colDwell}</th>
+            <th className="font-medium pb-2 text-right">{t.colScroll}</th>
             <th className="font-medium pb-2 text-right hidden sm:table-cell">{t.colClicks}</th>
           </tr>
         </thead>
@@ -284,12 +347,100 @@ function EngagedPaths({ rows, t }: { rows: EngagedPath[]; t: { noData: string; c
               <td className="py-2 text-right font-mono tabular text-cream">{fmtInt(r.views)}</td>
               <td className="py-2 text-right font-mono tabular text-neutral-400 hidden sm:table-cell">{fmtInt(r.visitors)}</td>
               <td className="py-2 text-right font-mono tabular text-bull">{fmtDur(r.avg_seconds)}</td>
+              <td className="py-2 text-right font-mono tabular text-neutral-300">{Math.round(r.avg_scroll)}%</td>
               <td className="py-2 text-right font-mono tabular text-neutral-400 hidden sm:table-cell">{fmtInt(r.clicks)}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+// 百分比 + 取首位标签（回访率、广告主受众构成用）
+function pct(a: number, b: number): number { return b > 0 ? Math.round((a / b) * 100) : 0; }
+function topLabel(arr?: KN[] | null): string { return arr && arr.length ? arr[0].k : ""; }
+function topChannel(c?: Channels | null): string {
+  const list = (c?.channels ?? []).filter((x) => x.k !== "internal");
+  return list.length ? list[0].k : "";
+}
+
+// 活跃时段：24 小时柱状（UTC+8）
+function HourBars({ data, hint }: { data: { hour: number; n: number }[]; hint: string }) {
+  const max = Math.max(1, ...data.map((d) => d.n));
+  return (
+    <div>
+      <div className="flex items-end gap-[3px] h-20">
+        {data.map((d) => (
+          <div key={d.hour} className="group relative flex-1 flex flex-col justify-end items-center">
+            <div
+              className="w-full rounded-t bg-reddit/55 group-hover:bg-reddit transition-all"
+              style={{ height: `${Math.max(2, Math.round((d.n / max) * 100))}%` }}
+              title={`${d.hour}:00 · ${d.n}`}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex justify-between text-[10px] text-neutral-600 font-mono">
+        <span>0</span><span>6</span><span>12</span><span>18</span><span>23</span>
+      </div>
+      <p className="mt-1 text-[11px] text-neutral-500">{hint}</p>
+    </div>
+  );
+}
+
+// 站内搜索词（含命中数）
+function SearchTerms({ rows, t }: { rows: SearchTerm[]; t: { noData: string; colTerm: string; colSearches: string; colFound: string } }) {
+  if (!rows.length) return <p className="text-sm text-neutral-600 py-2">{t.noData}</p>;
+  return (
+    <table className="w-full text-[13px]">
+      <thead>
+        <tr className="text-[11px] uppercase tracking-wider text-neutral-500 text-left">
+          <th className="font-medium pb-2">{t.colTerm}</th>
+          <th className="font-medium pb-2 text-right">{t.colSearches}</th>
+          <th className="font-medium pb-2 text-right">{t.colFound}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.term} className="border-t border-line/60">
+            <td className="py-1.5 font-mono text-neutral-200 truncate max-w-[160px]" title={r.term}>{r.term}</td>
+            <td className="py-1.5 text-right font-mono tabular text-cream">{fmtInt(r.n)}</td>
+            <td className="py-1.5 text-right font-mono tabular text-neutral-400">{fmtInt(r.found)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+// 转化漏斗：各阶段独立访客 + 相对上一阶段转化率
+function FunnelView({ f, t }: { f: Funnel; t: { stLanding: string; stDashboard: string; stTicker: string; stPost: string; stShare: string } }) {
+  const stages = [
+    { label: t.stLanding, v: f.landing },
+    { label: t.stDashboard, v: f.dashboard },
+    { label: t.stTicker, v: f.ticker },
+    { label: t.stPost, v: f.post },
+    { label: t.stShare, v: f.share },
+  ];
+  const top = Math.max(1, ...stages.map((s) => s.v));
+  return (
+    <ul className="space-y-2.5">
+      {stages.map((s, i) => {
+        const prev = i === 0 ? s.v : stages[i - 1].v;
+        const conv = i === 0 ? 100 : prev > 0 ? Math.round((s.v / prev) * 100) : 0;
+        return (
+          <li key={s.label} className="flex items-center gap-3">
+            <span className="text-[13px] text-neutral-300 w-16 shrink-0">{s.label}</span>
+            <span className="flex-1 h-5 rounded-md bg-white/[.05] overflow-hidden">
+              <span className="block h-full rounded-md bg-reddit/55" style={{ width: `${Math.max(3, Math.round((s.v / top) * 100))}%` }} />
+            </span>
+            <span className="font-mono tabular text-[13px] text-cream w-12 text-right">{fmtInt(s.v)}</span>
+            <span className="font-mono tabular text-[11px] text-neutral-500 w-10 text-right">{i === 0 ? "" : `${conv}%`}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
