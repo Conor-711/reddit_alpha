@@ -229,8 +229,14 @@ export function getAllTickerSymbols(): string[] {
 
 // 中概·港股个股页静态参数：在 cn 窗口内有讨论（rollup 行）的标的。
 export function getAllCnTickerSymbols(): string[] {
+  // generateStaticParams 用：必须在「有任何 cn 数据」时非空，否则 output:export 会把
+  // 空数组的动态路由当成「缺 generateStaticParams」而构建失败（Railway 上 cn 窗口为空即触发）。
+  // 取并集：① 策划的中概/港股/A 股字典(ticker_meta.market='cn') ② cn 市场帖子里被提及的标的(含 ADR)。
   return all<{ ticker: string }>(
-    "SELECT DISTINCT ticker FROM ticker_rollup WHERE market='cn' AND bucket='window'"
+    `SELECT ticker FROM ticker_meta WHERE market='cn'
+     UNION
+     SELECT DISTINCT m.ticker FROM mentions m
+       JOIN posts p ON p.id = m.item_id AND p.market='cn'`
   ).map((r) => r.ticker);
 }
 

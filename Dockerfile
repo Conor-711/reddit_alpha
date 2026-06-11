@@ -22,9 +22,14 @@ RUN cd web && npm install --no-audit --no-fund
 COPY . .
 
 # ---- 生成数据集：真实(Arctic Shift) + 样本兜底，mock AI 打标 ----
+# seed-cn-hk 必须执行：灌入「中概/港股/A 股」字典(ticker_meta.market='cn')，保证 /cn/ticker 的
+# generateStaticParams 非空（否则 output:export 会以「缺 generateStaticParams」构建失败）。
+# rollup/mood/trending/narratives 默认按 us + cn 双市场各跑一遍。
 RUN /venv/bin/python -m pipeline.manage db-init \
  && /venv/bin/python -m pipeline.manage seed-tickers \
+ && /venv/bin/python -m pipeline.manage seed-cn-hk \
  && ( /venv/bin/python -m pipeline.manage scrape --days 3 --limit 250 || true ) \
+ && ( /venv/bin/python -m pipeline.manage scrape-china --days 30 --limit 200 || true ) \
  && /venv/bin/python -m pipeline.manage ensure-sample \
  && /venv/bin/python -m pipeline.manage analyze --mock \
  && /venv/bin/python -m pipeline.manage rollup \
