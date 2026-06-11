@@ -94,6 +94,8 @@ language sql security definer set search_path = public stable as $$
 $$;
 
 -- ============ 最爱页面：在原有基础上加「平均滚动深度」(内容质量)  ============
+-- 该函数已在 …_engagement.sql 建过（无 avg_scroll 列）；改返回类型必须先 DROP，CREATE OR REPLACE 不行。
+drop function if exists public.analytics_top_paths_engaged(int, int);
 create or replace function public.analytics_top_paths_engaged(p_limit int default 10, p_days int default 30)
 returns table(path text, views bigint, visitors bigint, avg_seconds numeric, clicks bigint, avg_scroll numeric)
 language sql security definer set search_path = public stable as $$
