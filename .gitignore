@@ -29,7 +29,7 @@ marketing/node_modules/
 # 历史 / 散落文件（非线上站点的一部分）
 /1/
 /legacy/
-/server.mjs
+# 注意：server.mjs 是生产静态服务入口（Dockerfile CMD 用它），必须入库——不要忽略。
 
 # 本地 agent / codex 工具
 .codex/
