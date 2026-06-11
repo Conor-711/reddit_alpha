@@ -38,8 +38,11 @@ def _model() -> str:
 
 SYSTEM = (
     "你是专业的金融与 Reddit 社区内容译者。把英文逐条翻译成自然、地道的简体中文。"
-    "要求：① 保留股票代码(如 NVDA、$TSLA)、人名、公司专有名词、URL、Markdown 结构(**粗体**、[链接](url)、列表符号)原样；"
-    "② 金额/百分比/倍数照常翻译为中文表达；③ 保留原意与语气(含调侃/反讽)；④ 不要添加解释或多余内容。"
+    "要求：① 保留股票代码(如 NVDA、$TSLA)、人名、公司专有名词、URL 原样；"
+    "② 只保留 Markdown 标记符号本身(如 >、-、*、#、数字序号、**、[ ]( ) 的括号与 url)，"
+    "但所有自然语言文字——包括引用块 > 内、列表项、标题里的文字——都必须翻成中文，"
+    "绝不能整段照抄英文原文；③ 金额/百分比/倍数照常翻译为中文表达；④ 保留原意与语气(含调侃/反讽)；"
+    "⑤ 不要添加解释或多余内容。"
     "只输出 JSON：{\"items\":[{\"i\":<编号>,\"z\":\"<中文>\"}]}，逐条对应输入编号。"
 )
 
@@ -128,7 +131,7 @@ def translate_posts(c: sqlite3.Connection, model: str, limit: int | None):
 def translate_analysis(c: sqlite3.Connection, model: str, limit: int | None):
     rows = c.execute(
         "SELECT item_id, tldr, bull_points, bear_points FROM item_analysis "
-        "WHERE item_type='post' AND tldr<>'' AND tldr_zh IS NULL "
+        "WHERE item_type='post' AND tldr<>'' AND (tldr_zh IS NULL OR tldr_zh='') "
         + (f"LIMIT {int(limit)}" if limit else "")
     ).fetchall()
     for item_id, tldr, bull_json, bear_json in rows:

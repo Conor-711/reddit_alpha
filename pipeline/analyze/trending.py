@@ -7,7 +7,7 @@ import statistics
 from sqlalchemy import and_, delete, select
 
 from ..common.db import session_scope, data_now
-from ..common.models import ItemAnalysis, Mention, Post, Trending
+from ..common.models import ItemAnalysis, Mention, Post, TickerMeta, Trending
 
 
 def run_trending(window_h: int = 24, recent_h: int = 6, market: str = "us") -> int:
@@ -23,6 +23,13 @@ def run_trending(window_h: int = 24, recent_h: int = 6, market: str = "us") -> i
             .where(Mention.item_type == "post", Mention.created_utc >= cutoff,
                    Post.market == market)
         ).all()
+
+        # cn 看板只统计策划的中概/港股/A 股宇宙（ticker_meta.market='cn'）；
+        # 剔除 cn 社区帖子里顺带提到的美股(NVDA/MSFT/GOOGL/TSLA...)。
+        if market == "cn":
+            allowed = {r[0] for r in s.execute(
+                select(TickerMeta.ticker).where(TickerMeta.market == "cn")).all()}
+            rows = [r for r in rows if r[0] in allowed]
 
         per: dict[str, dict] = {}
         for tk, created, sent in rows:

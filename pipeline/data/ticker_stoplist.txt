@@ -5,6 +5,7 @@
 # 每行一个，大写。
 A
 I
+AI
 AM
 AN
 AS

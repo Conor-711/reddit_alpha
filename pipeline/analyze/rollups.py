@@ -13,7 +13,7 @@ from sqlalchemy import and_, delete, select
 
 from ..common.config import PKG_DATA_DIR, settings
 from ..common.db import session_scope, data_now
-from ..common.models import ItemAnalysis, Mention, Post, TickerRollup
+from ..common.models import ItemAnalysis, Mention, Post, TickerMeta, TickerRollup
 
 
 def _sub_weights() -> dict[str, float]:
@@ -46,6 +46,13 @@ def run_rollups(market: str = "us") -> int:
             .where(Mention.item_type == "post", Mention.created_utc >= cutoff,
                    Post.market == market)
         ).all()
+
+        # cn 看板只统计策划的中概/港股/A 股宇宙（ticker_meta.market='cn'）；
+        # 否则 cn 社区帖子里顺带提到的美股(NVDA/MSFT/GOOGL/TSLA...)会混入中概·港股面板。
+        if market == "cn":
+            allowed = {r[0] for r in s.execute(
+                select(TickerMeta.ticker).where(TickerMeta.market == "cn")).all()}
+            rows = [r for r in rows if r[0] in allowed]
 
         # ---------- window 聚合 ----------
         win: dict[str, dict] = {}

@@ -5,7 +5,6 @@ import { SubredditChip, Avatar, SentPill, TickerChip, ThemeTag } from "@/compone
 import { MarkdownLite } from "@/components/MarkdownLite";
 import { Comments } from "@/components/Comments";
 import { TranslateToggle } from "@/components/TranslateToggle";
-import { AdSlot } from "@/components/AdSlot";
 import { ShareBar } from "@/components/ShareBar";
 import { IconUpvote, IconComment, IconDoc, IconList } from "@/components/icons";
 import { timeAgo, fmtCompact, fmtInt, REDDIT } from "@/lib/format";
@@ -117,10 +116,6 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
           )}
         </section>
       )}
-
-      <div className="pt-8">
-        <AdSlot variant="banner" slot="post-mid" />
-      </div>
 
       {/* ③ 帖子正文 —— 阅读区，留足宽度 */}
       <section className="pt-8">

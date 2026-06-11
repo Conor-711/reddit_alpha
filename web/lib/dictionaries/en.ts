@@ -23,6 +23,7 @@ export const en: Dictionary = {
     updatedPrefix: "Updated ",
     noData: "No data yet",
     communities: "Tracked communities",
+    contact: "Business contact",
     dataFrom: "Data from Reddit communities",
     liveDemo: "Daily refresh · 08:00 UTC+8",
     disclaimer: "Sentiment signal, not investment advice",
@@ -71,6 +72,10 @@ export const en: Dictionary = {
     subtitle: "Posts in the window clustered into named themes, ranked by heat.",
     stat: "active narratives",
     empty: "No narratives yet.",
+    fPosts: "Posts",
+    fSentiment: "Sentiment",
+    fHeat: "Heat",
+    fTickers: "Mentioned tickers",
   },
   leaderboard: {
     eyebrow: "Author influence",
@@ -211,6 +216,8 @@ export const en: Dictionary = {
     mentionsSuffix: " mentions",
     narrativesTitle: "Top narratives",
     ddTitle: "High-quality DD posts",
+    ddMore: "Show more",
+    ddLess: "Show less",
     emptyPre: "No data yet — run ",
   },
   credibility: {

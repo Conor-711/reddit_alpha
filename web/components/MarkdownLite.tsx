@@ -7,7 +7,13 @@ import { useLocale } from "./i18n/LocaleProvider";
 import { withLang, type Locale } from "@/lib/i18n";
 
 function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // 同时转义引号：链接 URL 会被放进 href="..."，不转义引号则不可信内容可突破属性（XSS）。
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function fmtInline(s: string, lang: Locale): string {

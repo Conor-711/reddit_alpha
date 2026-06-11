@@ -1,14 +1,33 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { SITE_URL, BASE_PATH, OG_IMAGE } from "@/lib/site";
 
 // 防闪烁：首屏渲染前按 localStorage 套用主题类 + 侧边栏折叠状态（默认白天 / 展开）。
 const THEME_INIT = `try{var d=document.documentElement;var t=localStorage.getItem('redditalpha:theme');if(t==='dark'){d.classList.add('dark')}else{d.classList.remove('dark')}var sb=localStorage.getItem('redditalpha:sidebar');if(sb){d.setAttribute('data-sb',sb)}}catch(e){}`;
 
+const SITE_TITLE = "redditalpha · Reddit 美股舆情情报";
+const SITE_DESC =
+  "以专业方式分析 Reddit 财经板块的帖子数据：声量份额、情绪、异动、热门叙事与每日简报。";
+
 export const metadata: Metadata = {
-  title: "redditalpha · Reddit 美股舆情情报",
-  description:
-    "以专业方式分析 Reddit 财经板块的帖子数据：声量份额、情绪、异动、热门叙事与每日简报。",
+  metadataBase: new URL(`${SITE_URL}${BASE_PATH}`),
+  title: SITE_TITLE,
+  description: SITE_DESC,
+  applicationName: "redditalpha",
+  openGraph: {
+    type: "website",
+    siteName: "redditalpha",
+    title: SITE_TITLE,
+    description: SITE_DESC,
+    images: [{ url: OG_IMAGE, width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESC,
+    images: [OG_IMAGE],
+  },
 };
 
 // 根布局只负责 html/body 外壳与全局 Provider；

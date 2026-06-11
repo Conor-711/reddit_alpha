@@ -162,13 +162,35 @@ SYSTEM_QWEN = """你是专业的美股社媒舆情分析师。仔细阅读一条
 其它要点：⑤ 读懂 WSB 黑话与反讽——moon/tendies/printing/rip=看多；bag/rope/guh/drilling=看空；用调侃语气说"某股要暴涨/IPO 稳赚/人人都在买"往往是反讽=看空。⑥ 论据必须是真实、可成立的投资逻辑；玩笑或纯情绪帖给低 quality_score 且对应数组可为空。⑦ 严格只输出 JSON。"""
 
 
+_STOP_CACHE: set | None = None
+
+
+def _stoplist() -> set:
+    """懒加载 ticker 停用表（话题词/黑话，如 AI、EV、IT），避免把它们当成标的。"""
+    global _STOP_CACHE
+    if _STOP_CACHE is None:
+        try:
+            from ..ingest.ticker_extract import load_stoplist
+            _STOP_CACHE = load_stoplist()
+        except Exception:  # noqa: BLE001
+            _STOP_CACHE = set()
+    return _STOP_CACHE
+
+
 def _norm_ticker_entries(raw, fallback: list[dict]) -> list[dict]:
-    """规范化 per-ticker 分析：保证 stance + 等长的 bull/bear(_zh) 数组。"""
+    """规范化 per-ticker 分析：保证 stance + 等长的 bull/bear(_zh) 数组。
+    防御：丢弃把「话题词」(停用表 token，如 AI——它虽是 C3.ai 的代码，但社区里基本指人工智能)
+    误当标的的条目，除非它确实作为候选出现（候选来自 mentions，已要求 cashtag）。"""
     out: list[dict] = []
+    stop = _stoplist()
+    cand = {str(x.get("ticker", "")).upper() for x in (fallback or [])}
     if not isinstance(raw, list):
         raw = []
     for t in raw:
         if not isinstance(t, dict) or not t.get("ticker"):
+            continue
+        tk = str(t["ticker"]).upper()
+        if tk in stop and tk not in cand:
             continue
         def _a(k: str) -> list:
             v = t.get(k)
@@ -184,7 +206,7 @@ def _norm_ticker_entries(raw, fallback: list[dict]) -> list[dict]:
         except (TypeError, ValueError):
             rel = 0.5
         out.append({
-            "ticker": str(t["ticker"]).upper(),
+            "ticker": tk,
             "relevance": rel,
             "stance": stance,
             "bull_points": bull, "bull_points_zh": bull_zh,

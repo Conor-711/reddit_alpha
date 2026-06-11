@@ -41,7 +41,7 @@ export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
         <NavLinks />
 
         {/* 追踪社区：可折叠模块（native <details>，静态导出零 JS） */}
-        <details className="group px-3 pb-3 mt-5 pt-4 border-t border-line/60" open>
+        <details className="group px-3 pb-3 mt-5 pt-4 border-t border-line/60">
           <summary className="sb-hide list-none cursor-pointer select-none flex items-center gap-2 px-2 py-1 mb-1.5 text-neutral-400 hover:text-neutral-200 transition [&::-webkit-details-marker]:hidden">
             <span className="w-[3px] h-3.5 rounded-full bg-neutral-600 shrink-0" />
             <span className="font-display text-[13px] font-bold tracking-tight">{dict.chrome.communities}</span>
@@ -59,9 +59,40 @@ export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
             ))}
           </div>
         </details>
-      </div>
 
-      {/* 数据看板（/insights）为管理员内部页：不放可见入口，仅凭 URL 直达，避免普通用户误点。 */}
+        {/* 商务联系方式：与侧边栏其它入口保持一致的行式样式 */}
+        <div className="px-3 pb-4">
+          <div className="sb-hide flex items-center gap-2 px-2 mb-2">
+            <span className="w-[3px] h-3.5 rounded-full bg-neutral-600 shrink-0" />
+            <span className="font-display text-[13px] font-bold text-neutral-400 tracking-tight">{dict.chrome.contact}</span>
+          </div>
+          <div className="space-y-1">
+            <a
+              href="https://x.com/Connor_7s"
+              target="_blank"
+              rel="noreferrer noopener"
+              title="@Connor_7s"
+              className="sb-row group flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] font-medium text-neutral-500 hover:text-neutral-200 hover:bg-white/[.04] transition"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-[17px] h-[17px] shrink-0 text-neutral-500 group-hover:text-current transition" aria-hidden>
+                <path d="M18.244 2H21.5l-7.5 8.57L23 22h-6.844l-5.36-7.01L4.66 22H1.4l8.02-9.17L1 2h7.02l4.84 6.4L18.244 2zm-1.2 18h1.9L7.04 4H5.02l12.024 16z" />
+              </svg>
+              <span className="sb-label">@Connor_7s</span>
+            </a>
+            <a
+              href="mailto:zfy3712z@gmail.com"
+              title="zfy3712z@gmail.com"
+              className="sb-row group flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] font-medium text-neutral-500 hover:text-neutral-200 hover:bg-white/[.04] transition"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px] shrink-0 text-neutral-500 group-hover:text-current transition" aria-hidden>
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m3 7 9 6 9-6" />
+              </svg>
+              <span className="sb-label truncate">zfy3712z@gmail.com</span>
+            </a>
+          </div>
+        </div>
+      </div>
 
       {/* 控制区（侧边栏下半部分）：语言 + 主题切换；折叠时只留主题图标 */}
       <div className="sb-row px-4 py-3 border-t border-line flex items-center justify-between gap-2 shrink-0">
@@ -82,6 +113,7 @@ export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
         </div>
         {dict.chrome.disclaimer}
       </div>
+
     </aside>
   );
 }

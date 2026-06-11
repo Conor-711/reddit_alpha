@@ -21,7 +21,7 @@ export interface FeedRow {
 }
 export interface NarrativeRow {
   id: number; slug: string; name: string; summary: string; post_count: number;
-  ticker_count: number; heat: number; tickers: { ticker: string; weight: number }[];
+  ticker_count: number; heat: number; sentiment: number; tickers: { ticker: string; weight: number }[];
 }
 export interface SentLeader {
   ticker: string; name: string; sentiment: number; mentions: number; bull: number; bear: number;
@@ -120,8 +120,11 @@ export function getTrending(limit = 12, onlySpikes = false, market = "us"): Tren
 
 export function getNarratives(limit = 12, market = "us"): NarrativeRow[] {
   const narrs = all<Omit<NarrativeRow, "tickers">>(
-    `SELECT id, slug, name, summary, post_count, ticker_count, heat
-       FROM narratives WHERE market=? ORDER BY heat DESC LIMIT ?`,
+    `SELECT n.id, n.slug, n.name, n.summary, n.post_count, n.ticker_count, n.heat,
+            COALESCE((SELECT AVG(ia.sentiment_score) FROM narrative_posts np
+                      JOIN item_analysis ia ON ia.item_id = np.post_id AND ia.item_type='post'
+                      WHERE np.narrative_id = n.id), 0) AS sentiment
+       FROM narratives n WHERE n.market=? ORDER BY n.heat DESC LIMIT ?`,
     market, limit
   );
   const links = all<{ narrative_id: number; ticker: string; weight: number }>(
@@ -191,10 +194,21 @@ export function getTodaysAlpha(limit = 3, market = "us"): AlphaRow[] {
         AND json_array_length(COALESCE(NULLIF(ia.tickers,''),'[]')) > 0
       ORDER BY ia.quality_score DESC, p.score DESC
       LIMIT ?`,
-    market, market, limit
+    market, market, limit * 8
   );
-  return mapFeed(rows).map((f, i) => {
-    const r = rows[i] as any;
+  // 去重：同一篇 DD 常被 crosspost 到 wsb/investing/valueinvesting 等多个版块（标题相同）→
+  // 只保留质量最高的一条，保证三条 Alpha 是三个不同的故事，而非同一帖的多个副本。
+  const seen = new Set<string>();
+  const picked: any[] = [];
+  for (const r of rows) {
+    const key = String(r.title || "").trim().toLowerCase().replace(/\s+/g, " ");
+    if (key && seen.has(key)) continue;
+    seen.add(key);
+    picked.push(r);
+    if (picked.length >= limit) break;
+  }
+  return mapFeed(picked).map((f, i) => {
+    const r = picked[i] as any;
     const bull = parseJSON<string[]>(r.bull_points, []);
     const bear = parseJSON<string[]>(r.bear_points, []);
     const edge = (f.stance === "bear" ? bear[0] : bull[0]) || bull[0] || bear[0] || f.tldr;

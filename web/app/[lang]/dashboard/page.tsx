@@ -1,10 +1,9 @@
 import { LocaleLink } from "@/components/i18n/LocaleLink";
-import { Panel, SectionTitle, Eyebrow, MiniBar } from "@/components/ui";
-import { FeedCard } from "@/components/FeedCard";
+import { Panel, SectionTitle, Eyebrow, MiniBar, ScoreNum } from "@/components/ui";
+import { FeedGrid } from "@/components/FeedGrid";
 import { NarrativeCard } from "@/components/NarrativeCard";
 import { TodaysAlpha } from "@/components/TodaysAlpha";
 import { IconFlame, IconWaves } from "@/components/icons";
-import { AdSlot } from "@/components/AdSlot";
 import { fmtInt, sentTextClass } from "@/lib/format";
 import { getDictionary, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
 import {
@@ -23,11 +22,9 @@ export default function Overview({ params }: { params: { lang: string } }) {
   const leaders = getSentimentLeaders("us", 5);
   const spikes = getTrending(8);
   const narratives = getNarratives(6);
-  const feed = getFeed({ limit: 6 });
+  const feed = getFeed({ limit: 24 });
   const maxShare = mind[0]?.mindshare || 1;
-  const maxZ = Math.max(0.1, ...spikes.map((s) => s.zscore));
-  const maxBull = Math.max(0.01, ...leaders.bullish.map((r) => r.sentiment));
-  const maxBear = Math.max(0.01, ...leaders.bearish.map((r) => Math.abs(r.sentiment)));
+  const maxHeat = Math.max(1, ...narratives.map((n) => n.heat));
 
   return (
     <div className="space-y-4">
@@ -56,14 +53,11 @@ export default function Overview({ params }: { params: { lang: string } }) {
         </div>
       </div>
 
-      {/* 广告位（模块间横幅） */}
-      <AdSlot variant="banner" slot="dashboard-mid" />
-
       {/* 第一行：热度榜（条形=声量、颜色=情绪）+ 异动&风向（合并卡） */}
       <div className="grid lg:grid-cols-2 gap-4 items-start">
         {/* 热度榜：不显示具体数字——条形长度=相对声量，颜色=多空情绪，一眼看排名与方向 */}
         <Panel className="p-5">
-          <SectionTitle title={t.topTitle} hint={t.topHint} accent="gold" icon="trophy" />
+          <SectionTitle title={t.topTitle} accent="gold" icon="trophy" />
           <div className="space-y-0.5">
             {mind.map((r, i) => (
               <LocaleLink
@@ -96,14 +90,17 @@ export default function Overview({ params }: { params: { lang: string } }) {
                 <LocaleLink
                   key={x.ticker}
                   href={`/ticker/${x.ticker}`}
-                  title={`z ${x.zscore > 0 ? "+" : ""}${x.zscore.toFixed(1)} · ${x.mentions}${t.mentionsSuffix}`}
-                  className="grid grid-cols-[92px_1fr] items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-white/[.03] transition group"
+                  className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[.03] transition group"
                 >
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
                     {x.spike ? <IconFlame className="w-3.5 h-3.5 text-amber shrink-0" /> : <span className="w-3.5 shrink-0" />}
                     <span className="font-mono font-semibold text-cream group-hover:text-amber transition truncate">{x.ticker}</span>
+                    <span className="text-xs text-neutral-600 tabular shrink-0">{x.mentions}{t.mentionsSuffix}</span>
                   </div>
-                  <MiniBar pct={(Math.max(0, x.zscore) / maxZ) * 100} color={sentBar(x.sentiment)} />
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-mono text-xs text-amber tabular">z {x.zscore > 0 ? "+" : ""}{x.zscore.toFixed(1)}</span>
+                    <span className="text-xs"><ScoreNum score={x.sentiment} /></span>
+                  </div>
                 </LocaleLink>
               ))}
             </div>
@@ -115,25 +112,24 @@ export default function Overview({ params }: { params: { lang: string } }) {
             {leaders.bullish.length || leaders.bearish.length ? (
               <div className="grid grid-cols-2 gap-x-5 gap-y-2">
                 {([
-                  { label: t.leadersBull, dot: "bg-bull", bar: "bg-bull", rows: leaders.bullish, max: maxBull },
-                  { label: t.leadersBear, dot: "bg-bear", bar: "bg-bear", rows: leaders.bearish, max: maxBear },
+                  { label: t.leadersBull, dot: "bg-bull", color: "text-bull", rows: leaders.bullish },
+                  { label: t.leadersBear, dot: "bg-bear", color: "text-bear", rows: leaders.bearish },
                 ] as const).map((col) => (
                   <div key={col.label}>
-                    <div className="flex items-center gap-1.5 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-                      <span className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
+                    <div className={`flex items-center gap-1.5 mb-2 text-[15px] font-bold ${col.color}`}>
+                      <span className={`w-2 h-2 rounded-full ${col.dot}`} />
                       {col.label}
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-0.5">
                       {col.rows.length ? (
                         col.rows.slice(0, 5).map((r) => (
                           <LocaleLink
                             key={r.ticker}
                             href={`/ticker/${r.ticker}`}
-                            title={`${r.sentiment > 0 ? "+" : ""}${r.sentiment.toFixed(2)}`}
-                            className="grid grid-cols-[50px_1fr] items-center gap-2 px-1 py-0.5 rounded-md hover:bg-white/[.03] transition group"
+                            className="flex items-center justify-between gap-2 px-1.5 py-1 rounded-md hover:bg-white/[.03] transition group"
                           >
                             <span className="font-mono text-sm font-semibold text-cream group-hover:text-amber transition truncate">{r.ticker}</span>
-                            <MiniBar pct={(Math.abs(r.sentiment) / col.max) * 100} color={col.bar} />
+                            <span className="text-xs"><ScoreNum score={r.sentiment} /></span>
                           </LocaleLink>
                         ))
                       ) : (
@@ -155,7 +151,7 @@ export default function Overview({ params }: { params: { lang: string } }) {
         <SectionTitle title={t.narrativesTitle} accent="reddit" icon="layers" />
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {narratives.map((n) => (
-            <NarrativeCard key={n.id} n={n} />
+            <NarrativeCard key={n.id} n={n} maxHeat={maxHeat} />
           ))}
         </div>
       </div>
@@ -163,11 +159,7 @@ export default function Overview({ params }: { params: { lang: string } }) {
       {/* 高质量 DD 帖（getFeed 已按 quality 排序） */}
       <div>
         <SectionTitle title={t.ddTitle} accent="neutral" icon="doc" />
-        <div className="grid md:grid-cols-2 gap-4">
-          {feed.map((p) => (
-            <FeedCard key={p.id} p={p} />
-          ))}
-        </div>
+        <FeedGrid posts={feed} initial={6} />
       </div>
     </div>
   );

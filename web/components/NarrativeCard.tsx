@@ -1,35 +1,60 @@
 "use client";
 
-import { TickerChip } from "./ui";
+import { TickerChip, ScoreNum } from "./ui";
 import { useLocale } from "./i18n/LocaleProvider";
 import type { NarrativeRow } from "@/lib/queries";
 
-export function NarrativeCard({ n, tickerBase = "/ticker" }: { n: NarrativeRow; tickerBase?: string }) {
+// 叙事卡：把一条叙事拆成若干「字段」呈现——讨论帖子数 / 情绪 / 热度 / 提到的 Ticker。
+export function NarrativeCard({ n, maxHeat = 1, tickerBase = "/ticker" }: { n: NarrativeRow; maxHeat?: number; tickerBase?: string }) {
   const { dict } = useLocale();
-  const heatPct = Math.min(100, Math.max(10, Math.round((n.heat / 16000) * 100)));
+  const c = dict.common;
+  const nd = dict.narratives;
+  // 热度条按当前展示集合内的最大热度归一（maxHeat 由页面传入），
+  // 避免固定除数(旧的 /16000)在「新帖普遍低分」的窗口里把所有卡都压到同一个下限值。
+  const heatPct = Math.min(100, Math.max(3, Math.round((n.heat / Math.max(1, maxHeat)) * 100)));
+
   return (
     <div className="panel rounded-xl p-4 panel-hover h-full flex flex-col">
-      {/* 标题领衔 */}
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="font-display font-bold text-cream text-[15px] leading-tight">{n.name}</h3>
-        <span className="font-mono text-[11px] text-neutral-500 tabular shrink-0 mt-0.5">{n.post_count} {dict.common.postsSuffix}</span>
+      <h3 className="font-display font-bold text-cream text-[15px] leading-tight">{n.name}</h3>
+
+      {/* 字段区：讨论帖子数 / 情绪 / 热度 */}
+      <div className="mt-3 space-y-2 text-[12.5px]">
+        <Field label={nd.fPosts}>
+          <span className="font-mono tabular font-semibold text-cream">{n.post_count}</span>
+          <span className="text-neutral-500"> {c.postsSuffix}</span>
+        </Field>
+        <Field label={nd.fSentiment}>
+          <ScoreNum score={n.sentiment} />
+        </Field>
+        <Field label={nd.fHeat}>
+          <div className="flex items-center gap-2 w-24 ml-auto">
+            <div className="h-1.5 flex-1 rounded-full bg-white/[.06] overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-r from-reddit/60 to-reddit" style={{ width: `${heatPct}%` }} />
+            </div>
+            <span className="font-mono tabular text-[11px] text-neutral-500 shrink-0">{heatPct}</span>
+          </div>
+        </Field>
       </div>
 
-      {/* 热度条（视觉差异化，弱化公式化文案） */}
-      <div className="mt-2.5 flex items-center gap-2">
-        <span className="text-[9px] uppercase tracking-[0.12em] text-neutral-600 shrink-0">{dict.common.heat}</span>
-        <div className="h-1 flex-1 rounded-full bg-white/[.06] overflow-hidden">
-          <div className="h-full rounded-full bg-gradient-to-r from-reddit/60 to-reddit" style={{ width: `${heatPct}%` }} />
+      {/* 提到的 Ticker */}
+      <div className="mt-3 pt-3 border-t border-line">
+        <div className="text-[10px] uppercase tracking-wider text-neutral-600 mb-1.5">{nd.fTickers}</div>
+        <div className="flex flex-wrap gap-1.5">
+          {n.tickers.slice(0, 6).map((t) => (
+            <TickerChip key={t.ticker} ticker={t.ticker} size="xs" base={tickerBase} />
+          ))}
+          {n.tickers.length === 0 && <span className="text-xs text-neutral-600">—</span>}
         </div>
       </div>
+    </div>
+  );
+}
 
-      <p className="mt-2.5 text-[12.5px] text-neutral-500 leading-relaxed line-clamp-2 flex-1">{n.summary}</p>
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {n.tickers.slice(0, 6).map((t) => (
-          <TickerChip key={t.ticker} ticker={t.ticker} size="xs" base={tickerBase} />
-        ))}
-      </div>
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-neutral-500 shrink-0">{label}</span>
+      <span className="min-w-0 text-right">{children}</span>
     </div>
   );
 }

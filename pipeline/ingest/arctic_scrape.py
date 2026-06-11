@@ -199,20 +199,28 @@ def fetch_comments(sess: requests.Session, post_id: str, limit: int = 100) -> li
     return r.json().get("data", []) or []
 
 
-def scrape_comments(top_n: int = 400, per_post: int = 15, min_comments: int = 4, min_score: int = 0) -> dict:
-    """为热度最高的若干帖抓取高分评论，写入 comments 表（仅供站内展示，不参与 mention/分析）。"""
-    from sqlalchemy import desc, select
+def scrape_comments(top_n: int = 700, per_post: int = 15, min_comments: int = 0, min_score: int = 0) -> dict:
+    """为「展示优先级最高」的帖抓取高分评论，写入 comments 表（仅供站内展示，不参与 mention/分析）。"""
+    from sqlalchemy import and_, desc, func, select
 
-    from ..common.models import Post
+    from ..common.models import ItemAnalysis, Post
 
     stats = {"posts_scanned": 0, "comments": 0}
     sess = requests.Session()
     sess.headers["User-Agent"] = UA
     with session_scope() as s:
+        # 按「展示优先级」(AI 质量分 → 赞数)选帖，而非靠 Arctic 存档时的 num_comments：
+        # Arctic 在发帖瞬间存档，post.num_comments 多为 0，用它过滤会漏掉之后才积累评论的高质量帖
+        # （如刚发布的高质量 DD / 今日Alpha）。质量分需 analyze 先跑（daily 已把本步移到 analyze 之后）。
         post_ids = [
             r[0]
             for r in s.execute(
-                select(Post.id).where(Post.num_comments >= min_comments).order_by(desc(Post.score)).limit(top_n)
+                select(Post.id)
+                .outerjoin(ItemAnalysis, and_(ItemAnalysis.item_id == Post.id,
+                                              ItemAnalysis.item_type == "post"))
+                .where(Post.num_comments >= min_comments)
+                .order_by(desc(func.coalesce(ItemAnalysis.quality_score, 0.0)), desc(Post.score))
+                .limit(top_n)
             ).all()
         ]
         for pid in post_ids:

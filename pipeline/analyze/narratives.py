@@ -44,6 +44,11 @@ def run_narratives(mock: bool = False, min_posts: int = 2, market: str = "us") -
             groups = _cluster_by_theme(rows)
         else:
             groups = _cluster_by_llm(rows)
+            if not groups:
+                # deepseek-v4 推理型对该任务偶发返回空 content（思维链占满预算却不产出答案）→
+                # 回退确定性主题分组，保证叙事区永不为空（仍是今日真实数据，只是按已标注主题分组）。
+                print(f"[narratives] LLM 聚类为空，回退主题分组（market={market}）。")
+                groups = _cluster_by_theme(rows)
 
         # 只清空本 market 的旧叙事（保留另一 market）
         old_ids = [r[0] for r in s.execute(
@@ -56,6 +61,13 @@ def run_narratives(mock: bool = False, min_posts: int = 2, market: str = "us") -
 
         kept = 0
         groups.sort(key=lambda g: -g["heat"])
+        # cn 看板：叙事的代表标的也只保留中概/港股/A 股宇宙，剔除主题里顺带提到的美股(NVDA/MSFT...)。
+        if market == "cn":
+            from ..common.models import TickerMeta
+            cn_uni = {r[0] for r in s.execute(
+                select(TickerMeta.ticker).where(TickerMeta.market == "cn")).all()}
+            for g in groups:
+                g["tickers"] = [(t, w) for (t, w) in g["tickers"] if t in cn_uni]
         for i, g in enumerate(groups):
             if len(g["post_ids"]) < min_posts:
                 continue
@@ -102,20 +114,39 @@ def _cluster_by_theme(rows) -> list[dict]:
     return out
 
 
-def _cluster_by_llm(rows) -> list[dict]:
-    """中档任务：对高分帖语义聚类（DeepSeek deepseek-v4-pro），返回与 mock 相同结构。"""
+def _clean_title(t: str) -> str:
+    """压平标题：去换行、压空白、截断。原始标题里的换行/超长文本会让 deepseek 推理型
+    偶发返回空 content（思维链占满 max_tokens 却不产出答案）。"""
+    return re.sub(r"\s+", " ", (t or "")).strip()[:140]
+
+
+def _cluster_by_llm(rows, retries: int = 3) -> list[dict]:
+    """中档任务：对高分帖语义聚类（DeepSeek deepseek-v4-pro），返回与 mock 相同结构。
+
+    deepseek-v4 推理型对该任务偶发返回空 content（思维链占满 max_tokens），故做三重防护：
+    ① 只取 top-24 + 压平标题，降低推理负担；② clean prompt（示例本身是合法 JSON、要求不带代码块）；
+    ③ 空结果重试。仍空则返回 []，由 run_narratives 回退主题分组，保证叙事区永不为空。
+    """
     from ..common.llm import MID, messages_json, model_label
 
-    items = sorted(rows, key=lambda r: -(float(r[2] or 0) * float(r[9] or 0.5)))[:40]
-    listing = "\n".join(
-        f"- id={r[0]} | {r[1]} | tickers={[t['ticker'] for t in (r[8] or [])]}" for r in items
-    )
+    items = sorted(rows, key=lambda r: -(float(r[2] or 0) * float(r[9] or 0.5)))[:24]
+    lines = []
+    for r in items:
+        tks = ",".join(t["ticker"] for t in (r[8] or [])[:5])
+        lines.append(f"- id={r[0]} | {_clean_title(r[1])}" + (f" | {tks}" if tks else ""))
+    listing = "\n".join(lines)
     system = (
-        "你是美股舆情分析师。把下列 Reddit 帖子聚成 4~8 个具名主题(叙事)。"
-        '只输出 JSON：{"narratives":[{"name":中文主题名,"summary":一段话中文摘要,'
-        '"post_ids":[...],"tickers":[代表代码...]}]}。post_ids 必须取自给定 id。'
+        "你是美股舆情分析师。把下列 Reddit 帖子聚成 4~8 个有意义的具名主题(叙事)，"
+        "每个主题给：中文名称、一句话中文摘要、成员帖 id 列表、相关股票代码。"
+        '只输出 JSON（不要解释、不要代码块）：{"narratives":[{"name":"主题名",'
+        '"summary":"一句话摘要","post_ids":["id1","id2"],"tickers":["NVDA"]}]}。'
+        "post_ids 只能用上面给出的 id。"
     )
-    data = messages_json(MID, system, listing, max_tokens=2000)
+    data = None
+    for _ in range(max(1, retries)):
+        data = messages_json(MID, system, listing, max_tokens=3000)
+        if data and data.get("narratives"):
+            break
     label = model_label(MID)
     score_map = {r[0]: float(r[2] or 0) for r in rows}
     out = []

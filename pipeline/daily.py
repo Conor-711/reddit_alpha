@@ -67,7 +67,6 @@ def run_daily(rebuild: bool = False) -> None:
     _safe("scrape", scrape, days=WINDOW_DAYS, limit_per=SCRAPE_LIMIT_PER)
     # 1.5) 关键词/ticker 过滤扫描综合中国社区，补充 A 股(沪深)等中国股市内容（量小，市场=cn）
     _safe("scrape-china", scrape_china_filtered, days=WINDOW_DAYS, limit_per=SCRAPE_LIMIT_PER)
-    _safe("scrape-comments", scrape_comments, top_n=400, per_post=15, min_comments=4)
 
     # 2) 若库内仍为空（如网络受限爬取失败），用样本兜底，保证站点不空
     if _post_count() == 0:
@@ -79,6 +78,9 @@ def run_daily(rebuild: bool = False) -> None:
         _safe("analyze", run_analyze, qwen=True, workers=10)
     else:
         _safe("analyze", run_analyze, mock=True)
+    # 3.5) 抓「展示优先级最高」帖的评论快照（移到 analyze 之后，按质量分选帖）。
+    #      Arctic 发帖瞬间存档 → num_comments≈0 不可信，故不按它过滤（min_comments=0）。
+    _safe("scrape-comments", scrape_comments, top_n=700, per_post=15, min_comments=0)
     for mk in MARKETS:
         _safe(f"rollup[{mk}]", run_rollups, market=mk)
         _safe(f"mood[{mk}]", run_market_mood, market=mk)

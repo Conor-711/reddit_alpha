@@ -21,6 +21,18 @@ web/node_modules/
 web/.next/
 web/out/
 web/prisma/dev.db
+*.tsbuildinfo
+
+# Marketing 子项目依赖（不参与线上 web 构建，不应入库）
+marketing/node_modules/
+
+# 历史 / 散落文件（非线上站点的一部分）
+/1/
+/legacy/
+/server.mjs
+
+# 本地 agent / codex 工具
+.codex/
 
 # OS / editor
 .DS_Store

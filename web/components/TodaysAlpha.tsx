@@ -23,13 +23,7 @@ export function TodaysAlpha({ alphas, tickerBase = "/ticker" }: { alphas: AlphaR
   if (!alphas.length) return null;
 
   return (
-    <section
-      className="relative overflow-hidden rounded-2xl text-white"
-      style={{
-        backgroundImage: "linear-gradient(135deg,#FF4500 0%,#FF6314 48%,#E03D00 100%)",
-        boxShadow: "0 18px 50px -18px rgba(255,69,0,0.65)",
-      }}
-    >
+    <section className="alpha-hero relative overflow-hidden rounded-2xl text-white">
       {/* 左上高光 */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -64,7 +58,7 @@ export function TodaysAlpha({ alphas, tickerBase = "/ticker" }: { alphas: AlphaR
           {alphas.map((a, i) => (
             <article
               key={a.id}
-              className="group relative flex flex-col overflow-hidden rounded-xl bg-card p-4 shadow-xl shadow-black/20 transition hover:-translate-y-1"
+              className="alpha-card group relative flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-inset ring-line p-4 shadow-xl shadow-black/25 transition hover:-translate-y-1"
             >
               {/* 巨号水印序号 */}
               <span className="pointer-events-none absolute -right-1 -top-3 font-display font-extrabold text-[64px] leading-none text-reddit/[.08] select-none">
