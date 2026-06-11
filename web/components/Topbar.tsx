@@ -2,7 +2,6 @@ import { LocaleLink } from "./i18n/LocaleLink";
 import { getMeta, getDataStats } from "@/lib/queries";
 import { timeAgo, fmtInt } from "@/lib/format";
 import { SearchBox } from "./SearchBox";
-import { MobileNav } from "./MobileNav";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { SidebarToggle } from "./SidebarToggle";
 import type { Locale, Dictionary } from "@/lib/i18n";
@@ -24,7 +23,10 @@ export function Topbar({ lang, dict }: { lang: Locale; dict: Dictionary }) {
     { v: stats.communities, label: c.communitiesShort },
   ];
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-surface/70 backdrop-blur">
+    <header
+      className="sticky top-0 z-30 border-b border-line bg-surface/70 backdrop-blur"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="flex items-center justify-between gap-3 h-16 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 min-w-0">
           <SidebarToggle />
@@ -71,7 +73,6 @@ export function Topbar({ lang, dict }: { lang: Locale; dict: Dictionary }) {
           {/* v1：账号系统暂未启用 */}
         </div>
       </div>
-      <MobileNav />
     </header>
   );
 }

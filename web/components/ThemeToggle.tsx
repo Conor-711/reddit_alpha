@@ -30,12 +30,21 @@ export function ThemeToggle({ variant = "fab" }: { variant?: "fab" | "inline" })
     } catch {
       /* ignore */
     }
+    // 同步移动端浏览器状态栏配色
+    try {
+      const m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute("content", next === "dark" ? "#0b0b0d" : "#f4f5f7");
+    } catch {
+      /* ignore */
+    }
   };
 
-  const cls =
-    variant === "inline"
-      ? "grid place-items-center w-9 h-9 rounded-full ring-1 ring-inset ring-line bg-white/[.03] text-neutral-400 hover:text-reddit hover:bg-white/[.06] transition shrink-0"
-      : "fixed bottom-5 right-5 z-[60] lg:hidden grid place-items-center w-11 h-11 rounded-full panel ring-1 ring-inset ring-line text-neutral-400 hover:text-reddit transition hover:-translate-y-0.5";
+  const fab = variant === "fab";
+  const cls = fab
+    ? "fixed z-[60] lg:hidden grid place-items-center w-11 h-11 rounded-full panel ring-1 ring-inset ring-line text-neutral-400 hover:text-reddit transition hover:-translate-y-0.5"
+    : "grid place-items-center w-9 h-9 rounded-full ring-1 ring-inset ring-line bg-white/[.03] text-neutral-400 hover:text-reddit hover:bg-white/[.06] transition shrink-0";
+  // fab 抬到底部 Tab 栏之上（含刘海安全区）
+  const style = fab ? { right: "1rem", bottom: "calc(4.75rem + env(safe-area-inset-bottom))" } : undefined;
 
   return (
     <button
@@ -44,6 +53,7 @@ export function ThemeToggle({ variant = "fab" }: { variant?: "fab" | "inline" })
       aria-label={theme === "light" ? dict.chrome.themeToDark : dict.chrome.themeToLight}
       title={theme === "light" ? dict.chrome.themeDark : dict.chrome.themeLight}
       className={cls}
+      style={style}
     >
       {theme === "dark" ? <SunIcon /> : <MoonIcon />}
     </button>

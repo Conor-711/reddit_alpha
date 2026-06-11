@@ -43,7 +43,7 @@ export default function Overview({ params }: { params: { lang: string } }) {
             {t.heading}
           </h1>
         </div>
-        <div className="flex items-stretch rounded-lg ring-1 ring-inset ring-white/[.06] bg-white/[.012] divide-x divide-line">
+        <div className="flex items-stretch rounded-lg ring-1 ring-inset ring-white/[.06] bg-white/[.012] divide-x divide-line max-w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {mood && (
             <KPI label={t.kpiMood} value={mood.label} sub={`${mood.mood_score > 0 ? "+" : ""}${mood.mood_score.toFixed(2)}`} tone={sentTextClass(mood.mood_score)} />
           )}
@@ -167,7 +167,7 @@ export default function Overview({ params }: { params: { lang: string } }) {
 
 function KPI({ label, value, sub, tone = "text-cream" }: { label: string; value: string; sub?: string; tone?: string }) {
   return (
-    <div className="px-4 py-2">
+    <div className="px-4 py-2 shrink-0 whitespace-nowrap">
       <div className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</div>
       <div className="mt-0.5 flex items-baseline gap-1.5">
         <span className={`font-display font-bold text-lg tabular leading-none ${tone}`}>{value}</span>
