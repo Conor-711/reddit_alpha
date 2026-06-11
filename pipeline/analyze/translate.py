@@ -157,9 +157,9 @@ def translate_comments(c: sqlite3.Connection, model: str, limit: int | None):
     ).fetchall()
     batches = list(_chunks(rows, 12))
 
-    def _batch(batch):
+    def _batch(batch, mt=4000):
         try:
-            zhs = translate_texts([b for _, b in batch], model, max_tokens=4000)
+            zhs = translate_texts([b for _, b in batch], model, max_tokens=mt)
         except Exception:  # noqa: BLE001
             zhs = [""] * len(batch)
         return [(cid, zh) for (cid, _), zh in zip(batch, zhs)]
@@ -173,6 +173,23 @@ def translate_comments(c: sqlite3.Connection, model: str, limit: int | None):
                         c.execute("UPDATE comments SET body_zh=? WHERE id=?", (zh, cid)); done += 1
                 if i % 10 == 0 or i == len(batches):
                     c.commit(); print(f"comments {i}/{len(batches)} 批 · {done} 条", flush=True)
+        c.commit()
+
+    # 兜底：批量(12/批)翻译会偶发「整批 JSON 解析失败」或「长评论被模型悄悄丢弃」→ 那些评论 body_zh 仍为空。
+    # 对仍缺译文的逐条重试：单条不会被丢、max_tokens 更大可容纳长评论，确保覆盖率不因批量缺陷而长期漏译。
+    left = c.execute(
+        "SELECT id, body FROM comments WHERE body<>'' AND (body_zh IS NULL OR body_zh='') "
+        + (f"LIMIT {int(limit)}" if limit else "")
+    ).fetchall()
+    if left:
+        print(f"comments 兜底逐条重试 {len(left)} 条（单条 max_tokens=8000）…", flush=True)
+        with ThreadPoolExecutor(WORKERS) as ex:
+            for j, fut in enumerate(as_completed([ex.submit(_batch, [row], 8000) for row in left]), 1):
+                for cid, zh in fut.result():
+                    if zh:
+                        c.execute("UPDATE comments SET body_zh=? WHERE id=?", (zh, cid)); done += 1
+                if j % 25 == 0 or j == len(left):
+                    c.commit(); print(f"comments 兜底 {j}/{len(left)} · 累计成功 {done} 条", flush=True)
         c.commit()
     print(f"comments: {len(rows)} 条处理（成功 {done}）", flush=True)
 
