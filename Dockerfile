@@ -27,6 +27,19 @@ COPY . .
 # 这样线上 = 本地。更新线上：本机重跑 `make daily` → 重新提交 data/dev.db → push 触发 Railway 重建。
 # 注：dev.db 已含完整 schema + us/cn 双市场聚合 + ticker_meta（保证 /cn/ticker generateStaticParams 非空）。
 
+# ---- 前端公开变量（NEXT_PUBLIC_*）----
+# Next 在「构建期」把这些值内联进静态导出包；运行期再设也没用（静态文件已生成）。
+# 故必须在 npm run build 之前注入。Railway 会把「同名的服务变量」作为 build arg 传给 Docker，
+# 因此只要在 Railway 项目里设置下面这些变量，线上 /insights 的 Supabase 就会「已配置」。
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_ADMIN_EMAIL
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+    NEXT_PUBLIC_ADMIN_EMAIL=$NEXT_PUBLIC_ADMIN_EMAIL \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
 # ---- 构建静态站（build 脚本已含 NODE_OPTIONS=--experimental-sqlite）----
 RUN cd web && npm run build
 
