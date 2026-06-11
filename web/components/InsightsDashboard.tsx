@@ -15,8 +15,17 @@ interface Overview {
 interface Daily { day: string; views: number; visitors: number }
 interface Pair { label: string; value: number }
 interface Recent { ts: string; event_type: string; path: string | null; lang: string | null; ticker: string | null }
+interface Engagement {
+  sessions: number; visitors: number;
+  avg_session_seconds: number; avg_visitor_seconds: number;
+  avg_pages_per_session: number; avg_pages_per_visitor: number;
+  avg_clicks_per_visitor: number; avg_clicks_per_session: number;
+  bounce_rate: number;
+}
+interface EngagedPath { path: string; views: number; visitors: number; avg_seconds: number; clicks: number }
 interface Data {
-  overview: Overview; daily: Daily[]; topPaths: Pair[];
+  overview: Overview; engagement: Engagement | null; engagedPaths: EngagedPath[];
+  daily: Daily[]; topPaths: Pair[];
   events: Pair[]; tickers: Pair[]; langs: Pair[];
   sources: Pair[]; shares: Pair[]; recent: Recent[];
 }
@@ -35,8 +44,10 @@ export function InsightsDashboard() {
   const load = useCallback(async () => {
     setFetching(true);
     setFailed(false);
-    const [overview, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
+    const [overview, engagement, engagedPaths, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
       analyticsRpc<Overview>("analytics_overview"),
+      analyticsRpc<Engagement>("analytics_engagement", { p_days: 30 }),
+      analyticsRpc<EngagedPath[]>("analytics_top_paths_engaged", { p_limit: 8, p_days: 30 }),
       analyticsRpc<Daily[]>("analytics_daily", { p_days: 14 }),
       analyticsRpc<{ path: string; views: number }[]>("analytics_top_paths", { p_limit: 8, p_days: 30 }),
       analyticsRpc<{ event_type: string; n: number }[]>("analytics_event_breakdown", { p_days: 30 }),
@@ -52,6 +63,8 @@ export function InsightsDashboard() {
     } else {
       setData({
         overview,
+        engagement: engagement ?? null,
+        engagedPaths: engagedPaths ?? [],
         daily: daily ?? [],
         topPaths: (topPaths ?? []).map((r) => ({ label: r.path, value: Number(r.views) })),
         events: (events ?? []).map((r) => ({ label: r.event_type, value: Number(r.n) })),
@@ -127,24 +140,49 @@ export function InsightsDashboard() {
 
       {data && (
         <>
-          {/* KPI */}
+          {/* —— 触达（受众规模：访客 / 浏览 / 会话）—— */}
+          <SectionLabel hint={t.secReachHint}>{t.secReach}</SectionLabel>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Kpi label={t.kpiViews} value={data.overview.page_views} sub={`${t.todayPrefix}+${fmtInt(data.overview.views_today)}`} />
             <Kpi label={t.kpiVisitors} value={data.overview.visitors} sub={`${t.todayPrefix}+${fmtInt(data.overview.visitors_today)}`} />
+            <Kpi label={t.kpiViews} value={data.overview.page_views} sub={`${t.todayPrefix}+${fmtInt(data.overview.views_today)}`} />
             <Kpi label={t.kpiSessions} value={data.overview.sessions} />
             <Kpi label={t.kpiEvents} value={data.overview.events} />
           </div>
+
+          {/* —— 参与度（人均停留 / 点击 / 页数 / 跳出；产品迭代 + 广告主可信度）—— */}
+          {data.engagement && (
+            <>
+              <SectionLabel hint={t.secEngageHint}>{t.secEngage}</SectionLabel>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Kpi accent label={t.engDwellVisitor} text={fmtDur(data.engagement.avg_visitor_seconds)} sub={`${t.perSession} ${fmtDur(data.engagement.avg_session_seconds)}`} />
+                <Kpi accent label={t.engClicksVisitor} text={data.engagement.avg_clicks_per_visitor.toFixed(1)} sub={`${t.perSession} ${data.engagement.avg_clicks_per_session.toFixed(1)}`} />
+                <Kpi label={t.engPagesVisitor} text={data.engagement.avg_pages_per_visitor.toFixed(1)} sub={`${t.perSession} ${data.engagement.avg_pages_per_session.toFixed(1)}`} />
+                <Kpi label={t.engBounce} text={`${Math.round(data.engagement.bounce_rate)}%`} sub={t.bounceHint} />
+              </div>
+              {/* 广告主一句话概览（可直接截图给广告主）*/}
+              <div className="rounded-2xl ring-1 ring-inset ring-reddit/25 bg-reddit/[.06] px-4 py-3 text-[13px] text-neutral-300 leading-relaxed">
+                <span className="font-semibold text-reddit">{t.adPitchLabel}</span>{" "}
+                {t.adPitch
+                  .replace("{visitors}", fmtInt(data.engagement.visitors))
+                  .replace("{dwell}", fmtDur(data.engagement.avg_visitor_seconds))
+                  .replace("{pages}", data.engagement.avg_pages_per_session.toFixed(1))
+                  .replace("{clicks}", data.engagement.avg_clicks_per_visitor.toFixed(1))}
+              </div>
+            </>
+          )}
 
           {/* 趋势 */}
           <Card title={t.trendTitle}>
             <Trend daily={data.daily} viewsLabel={t.trendViews} />
           </Card>
 
+          {/* 用户最爱逛的页面（含停留 / 访客 / 点击）—— 整宽表 */}
+          <Card title={t.topPagesEngaged}>
+            <EngagedPaths rows={data.engagedPaths} t={t} />
+          </Card>
+
           {/* 分布网格 */}
           <div className="grid md:grid-cols-2 gap-4">
-            <Card title={t.topPages}>
-              <BarList items={data.topPaths} empty={t.noData} unit={t.unit} mono />
-            </Card>
             <Card title={t.eventsTitle}>
               <BarList items={data.events} empty={t.noData} unit={t.unit} />
             </Card>
@@ -188,12 +226,69 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-function Kpi({ label, value, sub }: { label: string; value: number; sub?: string }) {
+function Kpi({ label, value, text, sub, accent }: { label: string; value?: number; text?: string; sub?: string; accent?: boolean }) {
   return (
-    <div className="rounded-2xl ring-1 ring-inset ring-line bg-white/[.02] p-4">
+    <div className={`rounded-2xl ring-1 ring-inset p-4 ${accent ? "ring-reddit/30 bg-reddit/5" : "ring-line bg-white/[.02]"}`}>
       <div className="text-[11px] uppercase tracking-wider text-neutral-500">{label}</div>
-      <div className="mt-1.5 font-mono font-bold text-cream text-[26px] tabular leading-none">{fmtCompact(value)}</div>
+      <div className={`mt-1.5 font-mono font-bold text-[26px] tabular leading-none ${accent ? "text-reddit" : "text-cream"}`}>
+        {text ?? fmtCompact(value ?? 0)}
+      </div>
       {sub && <div className="mt-1.5 text-[11px] text-bull">{sub}</div>}
+    </div>
+  );
+}
+
+// 秒 → 友好时长："1m 35s" / "42s"
+function fmtDur(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return r ? `${m}m ${r}s` : `${m}m`;
+}
+
+// 区块小标题
+function SectionLabel({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return (
+    <div className="flex items-baseline gap-2 mt-1">
+      <span className="w-1 h-3.5 rounded-full bg-reddit shrink-0" />
+      <h2 className="font-display font-bold text-cream text-[15px] tracking-tight">{children}</h2>
+      {hint && <span className="text-[11px] text-neutral-500">{hint}</span>}
+    </div>
+  );
+}
+
+// 最爱页面（含停留 / 独立访客 / 点击）
+function EngagedPaths({ rows, t }: { rows: EngagedPath[]; t: { noData: string; colPath: string; colViews: string; colVisitors: string; colDwell: string; colClicks: string } }) {
+  if (!rows.length) return <p className="text-sm text-neutral-600 py-2">{t.noData}</p>;
+  const max = Math.max(1, ...rows.map((r) => r.views));
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-[11px] uppercase tracking-wider text-neutral-500 text-left">
+            <th className="font-medium pb-2">{t.colPath}</th>
+            <th className="font-medium pb-2 text-right">{t.colViews}</th>
+            <th className="font-medium pb-2 text-right hidden sm:table-cell">{t.colVisitors}</th>
+            <th className="font-medium pb-2 text-right">{t.colDwell}</th>
+            <th className="font-medium pb-2 text-right hidden sm:table-cell">{t.colClicks}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.path} className="border-t border-line/60">
+              <td className="py-2 pr-3">
+                <span className="font-mono text-neutral-200 truncate inline-block max-w-[180px] align-middle" title={r.path}>{r.path}</span>
+                <span className="ml-2 inline-block h-1 rounded-full bg-reddit/50 align-middle" style={{ width: `${Math.round((r.views / max) * 60)}px` }} />
+              </td>
+              <td className="py-2 text-right font-mono tabular text-cream">{fmtInt(r.views)}</td>
+              <td className="py-2 text-right font-mono tabular text-neutral-400 hidden sm:table-cell">{fmtInt(r.visitors)}</td>
+              <td className="py-2 text-right font-mono tabular text-bull">{fmtDur(r.avg_seconds)}</td>
+              <td className="py-2 text-right font-mono tabular text-neutral-400 hidden sm:table-cell">{fmtInt(r.clicks)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

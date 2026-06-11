@@ -35,6 +35,19 @@ function uid(): string {
   }
 }
 
+// 只统计「线上」访问：本地 / 内网（localhost、127.x、0.x、192.168.x、10.x、*.local、无点主机名）一律不记录。
+function isLocalHost(): boolean {
+  try {
+    const h = window.location.hostname;
+    if (!h || h === "localhost" || h === "::1" || h.endsWith(".local")) return true;
+    if (/^(127\.|0\.0\.0\.0|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) return true;
+    if (!h.includes(".")) return true; // 无点主机名（容器内部名等）视为非正式访问
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 function visitorId(): string {
   try {
     let v = localStorage.getItem(VKEY);
@@ -71,6 +84,7 @@ export interface TrackProps {
 // 记录一次行为事件（fire-and-forget；不阻塞、不报错冒泡）。
 export function track(eventType: string, props: TrackProps = {}): void {
   if (!supabase || typeof window === "undefined") return;
+  if (isLocalHost()) return; // 只统计线上访问，忽略本地/内网
   if (isTrackingDisabled()) return; // 本设备已选择「排除我的访问」→ 不记录
   let ref: string | null = null;
   try {
