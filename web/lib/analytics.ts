@@ -120,22 +120,48 @@ function classifyChannel(host: string | null, utmMedium: string | null, utmSourc
 // 设备 / 操作系统 / 浏览器（轻量 UA 解析，仅做画像分桶，非精确）。
 function deviceInfo(): { device: string; os: string; browser: string } {
   const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
-  const tablet = /iPad|Tablet|PlayBook|Silk|Android(?!.*Mobile)/i.test(ua);
+  const touch = (typeof navigator !== "undefined" && navigator.maxTouchPoints) || 0;
+  // iPadOS 13+ 的 Safari 默认上报「桌面版」UA（Macintosh），用触点数区分真 Mac 与 iPad。
+  const iPadDesktop = /Macintosh/i.test(ua) && touch > 1;
+  // 关键：iPhone/iPad 的 UA 也含「like Mac OS X」，故必须先判 iOS，再判 macOS，否则 iPhone 会被误判为 macOS。
+  const isIOS = /iPhone|iPad|iPod/i.test(ua) || iPadDesktop;
+
+  let os = "Other";
+  if (isIOS) os = "iOS";
+  else if (/Macintosh|Mac OS X/i.test(ua)) os = "macOS";
+  else if (/Windows/i.test(ua)) os = "Windows";
+  else if (/Android/i.test(ua)) os = "Android";
+  else if (/CrOS/i.test(ua)) os = "ChromeOS";
+  else if (/Linux/i.test(ua)) os = "Linux";
+
+  const tablet = /iPad|Tablet|PlayBook|Silk|Android(?!.*Mobile)/i.test(ua) || iPadDesktop;
   const mobile = /Mobi|iPhone|iPod|Android.*Mobile|Windows Phone|IEMobile/i.test(ua);
   const device = tablet ? "tablet" : mobile ? "mobile" : "desktop";
-  let os = "Other";
-  if (/Windows/i.test(ua)) os = "Windows";
-  else if (/Macintosh|Mac OS X/i.test(ua)) os = "macOS";
-  else if (/Android/i.test(ua)) os = "Android";
-  else if (/iPhone|iPad|iPod/i.test(ua)) os = "iOS";
-  else if (/Linux/i.test(ua)) os = "Linux";
+
+  // iOS 上 Chrome/Firefox/Edge 是 WebKit 套壳，UA 用 CriOS/FxiOS/EdgiOS 标识。
   let browser = "Other";
-  if (/Edg\//i.test(ua)) browser = "Edge";
-  else if (/OPR\/|Opera/i.test(ua)) browser = "Opera";
+  if (/Edg\/|EdgiOS/i.test(ua)) browser = "Edge";
+  else if (/OPR\/|OPiOS|Opera/i.test(ua)) browser = "Opera";
+  else if (/CriOS/i.test(ua)) browser = "Chrome";
+  else if (/FxiOS/i.test(ua)) browser = "Firefox";
   else if (/Firefox\//i.test(ua)) browser = "Firefox";
   else if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) browser = "Chrome";
   else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
   return { device, os, browser };
+}
+
+// 是否「独立窗口」运行（= 用户把站点加到主屏/安装为 App 后启动）。
+// 这是「有多少用户把网站存下来」最接近、且真正可追踪的信号；浏览器原生收藏无法被网页探测。
+function isStandalone(): boolean {
+  try {
+    return (
+      (typeof matchMedia !== "undefined" && matchMedia("(display-mode: standalone)").matches) ||
+      // iOS Safari 专有：从主屏启动时为 true
+      (navigator as unknown as { standalone?: boolean }).standalone === true
+    );
+  } catch {
+    return false;
+  }
 }
 
 // 底层写入（fire-and-forget）。track 与 ensureSessionStart 共用。
@@ -198,6 +224,7 @@ function ensureSessionStart(): void {
         landing: window.location.pathname,
         returning: dsf > 0, // 首访之后的不同自然日再来 = 回访
         dsf,
+        standalone: isStandalone(), // 从主屏/已安装 App 启动 = 把站点「存下来」的用户
       },
     });
   } catch {

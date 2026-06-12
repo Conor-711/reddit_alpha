@@ -33,11 +33,12 @@ interface Funnel { landing: number; dashboard: number; ticker: number; post: num
 interface SearchTerm { term: string; n: number; found: number }
 interface Retention { max: number; cohorts: { date: string; size: number; pct: (number | null)[] }[]; curve: { d: number; pct: number | null }[] }
 interface Inventory { days: number; impressions: number; visitors: number; sessions: number }
+interface Pwa { standalone_visitors: number; standalone_sessions: number; installs: number }
 interface Data {
   overview: Overview; engagement: Engagement | null; engagedPaths: EngagedPath[];
   audience: Audience | null; channels: Channels | null; funnel: Funnel | null;
   hourly: { hour: number; n: number }[]; searchTerms: SearchTerm[];
-  retention: Retention | null; inventory: Inventory | null;
+  retention: Retention | null; inventory: Inventory | null; pwa: Pwa | null;
   daily: Daily[]; topPaths: Pair[];
   events: Pair[]; tickers: Pair[]; langs: Pair[];
   sources: Pair[]; shares: Pair[]; recent: Recent[];
@@ -62,7 +63,7 @@ export function InsightsDashboard() {
   const load = useCallback(async () => {
     setFetching(true);
     setFailed(false);
-    const [overview, engagement, engagedPaths, audience, channels, funnel, hourly, searchTerms, retention, inventory, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
+    const [overview, engagement, engagedPaths, audience, channels, funnel, hourly, searchTerms, retention, inventory, pwa, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
       analyticsRpc<Overview>("analytics_overview"),
       analyticsRpc<Engagement>("analytics_engagement", { p_days: 30 }),
       analyticsRpc<EngagedPath[]>("analytics_top_paths_engaged", { p_limit: 8, p_days: 30 }),
@@ -73,6 +74,7 @@ export function InsightsDashboard() {
       analyticsRpc<SearchTerm[]>("analytics_search_terms", { p_limit: 12, p_days: 30 }),
       analyticsRpc<Retention>("analytics_retention", { p_days: 21, p_max: 7 }),
       analyticsRpc<Inventory>("analytics_inventory", { p_days: 30 }),
+      analyticsRpc<Pwa>("analytics_pwa", { p_days: 30 }),
       analyticsRpc<Daily[]>("analytics_daily", { p_days: 14 }),
       analyticsRpc<{ path: string; views: number }[]>("analytics_top_paths", { p_limit: 8, p_days: 30 }),
       analyticsRpc<{ event_type: string; n: number }[]>("analytics_event_breakdown", { p_days: 30 }),
@@ -97,6 +99,7 @@ export function InsightsDashboard() {
         searchTerms: searchTerms ?? [],
         retention: retention ?? null,
         inventory: inventory ?? null,
+        pwa: pwa ?? null,
         daily: daily ?? [],
         topPaths: (topPaths ?? []).map((r) => ({ label: r.path, value: Number(r.views) })),
         events: (events ?? []).map((r) => ({ label: r.event_type, value: Number(r.n) })),
@@ -211,6 +214,15 @@ export function InsightsDashboard() {
                 <Kpi label={t.audReturning} value={data.audience.returning_visitors} />
                 <Kpi accent label={t.audReturnRate} text={`${pct(data.audience.returning_visitors, data.audience.visitors)}%`} sub={t.audReturnHint} />
               </div>
+              {/* 「把站点存下来」的可追踪信号：加到主屏/独立启动 + 安装次数（原生书签无法统计）。 */}
+              {data.pwa && (
+                <div className="rounded-xl ring-1 ring-inset ring-reddit/20 bg-reddit/[.05] px-4 py-2.5 text-[13px] text-neutral-300 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span className="font-semibold text-reddit">{t.pwaSavedLabel}</span>
+                  <span><b className="font-mono text-cream">{fmtInt(data.pwa.standalone_visitors)}</b> {t.pwaStandalone}</span>
+                  <span><b className="font-mono text-cream">{fmtInt(data.pwa.installs)}</b> {t.pwaInstalls}</span>
+                  <span className="text-neutral-500 text-[11px]">{t.pwaHint}</span>
+                </div>
+              )}
               <div className="grid md:grid-cols-3 gap-4">
                 <Card title={t.deviceTitle}><BarList items={kn(data.audience.devices)} empty={t.noData} unit={t.unit} /></Card>
                 <Card title={t.browserTitle}><BarList items={kn(data.audience.browsers)} empty={t.noData} unit={t.unit} /></Card>
