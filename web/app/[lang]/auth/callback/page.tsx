@@ -34,7 +34,7 @@ export default function AuthCallbackPage() {
       const { data } = await supabase!.auth.getSession();
       if (!alive) return;
       if (data.session) {
-        router.replace(withLang(lang, "/"));
+        router.replace(withLang(lang, "/dashboard"));
       } else if (tries++ < 25) {
         setTimeout(check, 200);
       } else {
@@ -44,7 +44,7 @@ export default function AuthCallbackPage() {
     check();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) router.replace(withLang(lang, "/"));
+      if (session) router.replace(withLang(lang, "/dashboard"));
     });
     return () => {
       alive = false;

@@ -26,11 +26,11 @@ export function EmailAuthForm({ mode }: { mode: "login" | "signup" }) {
     try {
       if (mode === "login") {
         await signInWithEmail(email, pw);
-        router.push(withLang(lang, "/")); // 跳转后由 AuthProvider 更新状态
+        router.push(withLang(lang, "/dashboard")); // 跳转后由 AuthProvider 更新状态
       } else {
         const data = await signUpWithEmail(email, pw);
         if (data.session) {
-          router.push(withLang(lang, "/"));
+          router.push(withLang(lang, "/dashboard"));
         } else {
           setMsg(t.confirmSent.replace("{email}", email));
           setLoading(false);

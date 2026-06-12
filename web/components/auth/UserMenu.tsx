@@ -43,8 +43,11 @@ export function UserMenu() {
     return (
       <LocaleLink
         href="/login"
-        className="inline-flex items-center gap-1.5 rounded-lg bg-reddit text-white text-sm font-semibold px-3.5 py-1.5 hover:brightness-110 transition"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-reddit text-white text-sm font-bold px-4 py-2 shadow-lg shadow-reddit/30 ring-1 ring-inset ring-white/15 hover:brightness-110 hover:shadow-reddit/50 transition"
       >
+        <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />
+        </svg>
         {t.loginLink}
       </LocaleLink>
     );
