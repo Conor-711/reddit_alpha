@@ -195,8 +195,9 @@ export function InsightsDashboard() {
           {data.engagement && (
             <>
               <SectionLabel hint={t.secEngageHint}>{t.secEngage}</SectionLabel>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <Kpi accent label={t.engDwellVisitor} text={fmtDur(data.engagement.avg_visitor_seconds)} sub={`${t.perSession} ${fmtDur(data.engagement.avg_session_seconds)}`} />
+              {/* 「人均停留」已移除：其口径含会话时间跨度(span_ms)，易被空闲/挂着高估，不对外展示。
+                  页面级「停留」(纯活跃时间)仍保留在「最爱页面」表里。 */}
+              <div className="grid grid-cols-3 gap-3">
                 <Kpi accent label={t.engClicksVisitor} text={data.engagement.avg_clicks_per_visitor.toFixed(1)} sub={`${t.perSession} ${data.engagement.avg_clicks_per_session.toFixed(1)}`} />
                 <Kpi label={t.engPagesVisitor} text={data.engagement.avg_pages_per_visitor.toFixed(1)} sub={`${t.perSession} ${data.engagement.avg_pages_per_session.toFixed(1)}`} />
                 <Kpi label={t.engBounce} text={`${Math.round(data.engagement.bounce_rate)}%`} sub={t.bounceHint} />
@@ -320,7 +321,6 @@ export function InsightsDashboard() {
                   <span className="font-semibold text-reddit">{t.adPitchLabel}</span>{" "}
                   {t.adPitch
                     .replace("{visitors}", fmtInt(data.engagement.visitors))
-                    .replace("{dwell}", fmtDur(data.engagement.avg_visitor_seconds))
                     .replace("{pages}", data.engagement.avg_pages_per_session.toFixed(1))
                     .replace("{clicks}", data.engagement.avg_clicks_per_visitor.toFixed(1))}
                 </p>

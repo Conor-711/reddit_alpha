@@ -154,7 +154,7 @@ export const en: Dictionary = {
     secReach: "Reach",
     secReachHint: "Audience scale — visitors / views / sessions",
     secEngage: "Engagement",
-    secEngageHint: "Dwell & interaction — product signal + advertiser credibility",
+    secEngageHint: "Interaction & quality — product signal + advertiser credibility",
     engDwellVisitor: "Avg dwell / visitor",
     engClicksVisitor: "Avg clicks / visitor",
     engPagesVisitor: "Pages / visitor",
@@ -167,7 +167,7 @@ export const en: Dictionary = {
     colDwell: "Dwell",
     colClicks: "Clicks",
     adPitchLabel: "For advertisers:",
-    adPitch: "{visitors} unique visitors over 30 days — {dwell} avg dwell, {pages} pages/session, {clicks} clicks/visitor. A high-intent US / China-equity investor audience.",
+    adPitch: "{visitors} unique visitors over 30 days — {pages} pages/session, {clicks} clicks/visitor. A high-intent US / China-equity investor audience.",
     // —— Acquisition ——
     secAcq: "Acquisition",
     secAcqHint: "Where users come from — judge distribution / spend",

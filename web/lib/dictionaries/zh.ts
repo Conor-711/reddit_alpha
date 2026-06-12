@@ -155,7 +155,7 @@ export const zh = {
     secReach: "触达",
     secReachHint: "受众规模——访客 / 浏览 / 会话",
     secEngage: "参与度",
-    secEngageHint: "用户停留与互动——产品迭代依据 + 广告主可信度",
+    secEngageHint: "用户互动与质量——产品迭代依据 + 广告主可信度",
     engDwellVisitor: "人均停留",
     engClicksVisitor: "人均点击",
     engPagesVisitor: "人均浏览页",
@@ -168,7 +168,7 @@ export const zh = {
     colDwell: "停留",
     colClicks: "点击",
     adPitchLabel: "广告主一句话：",
-    adPitch: "近 30 天 {visitors} 名独立访客，人均停留 {dwell}、每会话浏览 {pages} 页、人均点击 {clicks} 次——高意图的美股 / 中概投资人群。",
+    adPitch: "近 30 天 {visitors} 名独立访客，每会话浏览 {pages} 页、人均点击 {clicks} 次——高意图的美股 / 中概投资人群。",
     // —— 获取渠道 ——
     secAcq: "获取渠道",
     secAcqHint: "用户从哪来——评估分发 / 投放",
