@@ -9,6 +9,10 @@ import { track } from "@/lib/analytics";
 // 这样后端可算：人均停留时长、人均点击、页/会话、跳出率（最爱页面 + 广告主可信度指标）。
 type Seg = { path: string; lang: string; start: number; clicks: number; maxScroll: number };
 
+// 单页停留上限：30 分钟。防「前台挂着不动 / 长时间不关」把单条停留撑成离群值，污染平均值。
+// 计时本就会在切后台时暂停，这里再给一个硬上限兜底。改这里即可调整阈值。
+const MAX_DWELL_MS = 30 * 60 * 1000;
+
 export function AnalyticsTracker() {
   const pathname = usePathname();
   const seg = useRef<Seg | null>(null);
@@ -17,7 +21,7 @@ export function AnalyticsTracker() {
   const flush = useCallback(() => {
     const s = seg.current;
     if (!s || !s.start) return;
-    const ms = Date.now() - s.start;
+    const ms = Math.min(Date.now() - s.start, MAX_DWELL_MS); // 封顶，防离群值
     s.start = 0;
     if (ms > 500 || s.clicks > 0) {
       track("page_leave", { path: s.path, lang: s.lang, meta: { ms, clicks: s.clicks, maxScroll: s.maxScroll } });
