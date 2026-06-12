@@ -41,7 +41,7 @@ export function ThemeToggle({ variant = "fab" }: { variant?: "fab" | "inline" })
 
   const fab = variant === "fab";
   const cls = fab
-    ? "fixed z-[60] lg:hidden grid place-items-center w-11 h-11 rounded-full panel ring-1 ring-inset ring-line text-neutral-400 hover:text-reddit transition hover:-translate-y-0.5"
+    ? "theme-fab fixed z-[60] lg:hidden grid place-items-center w-11 h-11 rounded-full panel ring-1 ring-inset ring-line text-neutral-400 hover:text-reddit transition hover:-translate-y-0.5"
     : "grid place-items-center w-9 h-9 rounded-full ring-1 ring-inset ring-line bg-white/[.03] text-neutral-400 hover:text-reddit hover:bg-white/[.06] transition shrink-0";
   // fab 抬到底部 Tab 栏之上（含刘海安全区）
   const style = fab ? { right: "1rem", bottom: "calc(4.75rem + env(safe-area-inset-bottom))" } : undefined;

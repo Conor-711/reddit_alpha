@@ -143,6 +143,11 @@ body::before,
   z-index: 1;
 }
 
+/* 安装提醒卡显示时隐藏右下角浮动主题按钮，避免遮挡导致无法关闭提醒卡 */
+html[data-install] .theme-fab {
+  display: none;
+}
+
 ::selection {
   background: rgba(255, 69, 0, 0.28);
 }

@@ -37,8 +37,10 @@ export function InstallPrompt() {
   const t = dict.install;
   const [show, setShow] = useState(false);
   const [guide, setGuide] = useState(false);
-  const [ios, setIos] = useState(false);
+  // 安装模式：safari（底部分享）/ chrome（含 Edge：分享→More→Add）/ android / unsupported（Google App 等内置浏览器，无此功能）
+  const [mode, setMode] = useState<"safari" | "chrome" | "android" | "unsupported">("android");
   const [canInstall, setCanInstall] = useState(false);
+  const [copied, setCopied] = useState(false);
   const deferred = useRef<BIPEvent | null>(null);
 
   useEffect(() => {
@@ -55,7 +57,19 @@ export function InstallPrompt() {
       mobile = false;
     }
     if (!mobile) return; // 桌面端交给 BookmarkHint
-    setIos(detectIOS());
+    const ua = navigator.userAgent || "";
+    const isIos = detectIOS();
+    // 按浏览器判定「添加到主屏」可行路径：
+    //  • Chrome/Edge(CriOS/EdgiOS)：右上角分享 → More → Add to Home Screen
+    //  • Google App / App 内置浏览器(GSA/FBAN/微信…)：无此功能 → 引导用 Safari 或 Chrome 打开
+    //  • 其余视为 Safari：底部分享 → 添加到主屏幕
+    if (isIos) {
+      if (/CriOS|EdgiOS/i.test(ua)) setMode("chrome");
+      else if (/GSA\/|FxiOS|OPiOS|FBAN|FBAV|MicroMessenger|Instagram|Line\/|QQ\//i.test(ua)) setMode("unsupported");
+      else setMode("safari");
+    } else {
+      setMode("android");
+    }
 
     const onBIP = (e: Event) => {
       e.preventDefault();
@@ -77,6 +91,14 @@ export function InstallPrompt() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 提醒卡显示时，标记 <html data-install>，让浮动主题按钮(theme-fab)临时隐藏，避免遮挡而无法关闭。
+  useEffect(() => {
+    const el = document.documentElement;
+    if (show) el.setAttribute("data-install", "1");
+    else el.removeAttribute("data-install");
+    return () => el.removeAttribute("data-install");
+  }, [show]);
 
   const dismiss = (persist: boolean) => {
     if (persist) {
@@ -109,9 +131,30 @@ export function InstallPrompt() {
     }
   };
 
+  const copyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText("https://www.redditalpha.xyz");
+      setCopied(true);
+      track("a2hs_copy");
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
+
   if (!show) return null;
 
-  const steps = ios ? [t.iosStep1, t.iosStep2, t.iosStep3] : [t.androidStep1, t.androidStep2, t.androidStep3];
+  // 四种模式各自的标题 / 步骤 / 备注（unsupported 走「复制网址 + 用 Safari/Chrome 打开」分支）。
+  const guideTitle =
+    mode === "android" ? t.androidGuideTitle
+    : mode === "safari" ? t.iosGuideTitle
+    : mode === "chrome" ? t.iosChromeGuideTitle
+    : t.iosUnsupportedTitle;
+  const steps =
+    mode === "android" ? [t.androidStep1, t.androidStep2, t.androidStep3]
+    : mode === "chrome" ? [t.iosChromeStep1, t.iosChromeStep2, t.iosChromeStep3]
+    : [t.iosStep1, t.iosStep2, t.iosStep3]; // safari
+  const note = mode === "chrome" ? t.iosChromeNote : mode === "safari" ? t.iosSafariNote : "";
 
   return (
     <>
@@ -158,22 +201,36 @@ export function InstallPrompt() {
           >
             <div className="flex items-center gap-2 mb-4">
               <PhoneIcon />
-              <h3 className="font-display font-extrabold text-cream text-[17px]">{ios ? t.iosGuideTitle : t.androidGuideTitle}</h3>
+              <h3 className="font-display font-extrabold text-cream text-[17px]">{guideTitle}</h3>
             </div>
-            <ol className="space-y-3.5">
-              {steps.map((s, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <span className="shrink-0 grid place-items-center w-6 h-6 rounded-full bg-reddit/15 text-reddit text-[12px] font-bold ring-1 ring-inset ring-reddit/30">
-                    {i + 1}
-                  </span>
-                  <span className="text-[13.5px] text-neutral-200 leading-relaxed">
-                    {s}
-                    {ios && i === 0 && <ShareIcon />}
-                  </span>
-                </li>
-              ))}
-            </ol>
-            {ios && <p className="mt-4 text-[11px] text-neutral-500 leading-relaxed">{t.iosSafariNote}</p>}
+            {mode === "unsupported" ? (
+              <>
+                <p className="text-[13.5px] text-neutral-200 leading-relaxed">{t.iosUnsupportedMsg}</p>
+                <button
+                  onClick={copyUrl}
+                  className="mt-4 w-full rounded-xl py-2.5 font-display font-bold text-cream text-sm ring-1 ring-inset ring-line bg-white/[.05] hover:bg-white/[.08] transition"
+                >
+                  {copied ? t.copied : t.copyBtn}
+                </button>
+              </>
+            ) : (
+              <>
+                <ol className="space-y-3.5">
+                  {steps.map((s, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="shrink-0 grid place-items-center w-6 h-6 rounded-full bg-reddit/15 text-reddit text-[12px] font-bold ring-1 ring-inset ring-reddit/30">
+                        {i + 1}
+                      </span>
+                      <span className="text-[13.5px] text-neutral-200 leading-relaxed">
+                        {s}
+                        {(mode === "safari" || mode === "chrome") && i === 0 && <ShareIcon />}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                {note && <p className="mt-4 text-[11px] text-neutral-500 leading-relaxed">{note}</p>}
+              </>
+            )}
             <button
               onClick={() => dismiss(true)}
               className="mt-5 w-full rounded-xl py-2.5 font-display font-bold text-white text-sm hover:brightness-110 transition"
