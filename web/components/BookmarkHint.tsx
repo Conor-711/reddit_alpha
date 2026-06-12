@@ -19,6 +19,12 @@ export function BookmarkHint() {
     } catch {
       /* privacy mode */
     }
+    // 仅桌面端：移动端改用「加到主屏」提醒(InstallPrompt)，避免指向不存在的浏览器星标。
+    try {
+      if (matchMedia("(max-width: 1023px)").matches) return;
+    } catch {
+      /* ignore */
+    }
     const ua = (navigator.platform || navigator.userAgent || "").toLowerCase();
     const mac = /mac|iphone|ipad|ipod/.test(ua);
     setCombo(mac ? "⌘ D" : "Ctrl + D");

@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { BookmarkHint } from "@/components/BookmarkHint";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { getDictionary, locales, defaultLocale, isLocale, type Locale } from "@/lib/i18n";
 
@@ -39,6 +40,7 @@ export default function LangLayout({
       </div>
       <ThemeToggle />
       <MobileTabBar />
+      <InstallPrompt />
       <BookmarkHint />
       <AnalyticsTracker />
     </LocaleProvider>
