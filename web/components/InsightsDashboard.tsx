@@ -32,7 +32,7 @@ interface Channels { channels: KN[]; campaigns: KN[] }
 interface Funnel { landing: number; dashboard: number; ticker: number; post: number; share: number }
 interface SearchTerm { term: string; n: number; found: number }
 interface Retention { max: number; cohorts: { date: string; size: number; pct: (number | null)[] }[]; curve: { d: number; pct: number | null }[] }
-interface Inventory { days: number; impressions: number; visitors: number; sessions: number }
+interface Inventory { days: number; impressions: number; visitors: number; sessions: number; viewable?: number; view_slots?: KN[] }
 interface Pwa { standalone_visitors: number; standalone_sessions: number; installs: number }
 interface WeekRow { week: string; new: number; returning: number; total: number }
 interface Returning { weeks: WeekRow[]; frequency: KN[]; wau: number; mau: number; stickiness: number }
@@ -599,14 +599,16 @@ function EcpmView({
 }: {
   inv: Inventory;
   t: {
-    ecpmImpr: string; ecpmPerMonth: string; ecpmColTier: string; ecpmColCpm: string; ecpmColRev: string;
-    ecpmLow: string; ecpmMid: string; ecpmHigh: string; ecpmAssume: string;
+    ecpmImpr: string; ecpmViewableImpr: string; ecpmPerMonth: string; ecpmColTier: string; ecpmColCpm: string; ecpmColRev: string;
+    ecpmLow: string; ecpmMid: string; ecpmHigh: string; ecpmAssume: string; ecpmBasisReal: string;
   };
 }) {
   const SLOTS = 2;
   const FILL = 0.7;
-  const monthlyViews = inv.days > 0 ? inv.impressions * (30 / inv.days) : inv.impressions;
-  const adImpr = monthlyViews * SLOTS;
+  const proj = inv.days > 0 ? 30 / inv.days : 1; // 投影到「月」
+  // 有真实可见曝光(ad_view) → 用它做基数；否则回退「页面浏览 × 广告位」估算。
+  const hasViewable = (inv.viewable ?? 0) > 0;
+  const adImpr = hasViewable ? (inv.viewable ?? 0) * proj : inv.impressions * proj * SLOTS;
   const tiers = [
     { label: t.ecpmLow, cpm: 6 },
     { label: t.ecpmMid, cpm: 12 },
@@ -615,7 +617,7 @@ function EcpmView({
   return (
     <div className="space-y-3">
       <div className="flex items-baseline gap-2">
-        <span className="text-[11px] uppercase tracking-wider text-neutral-500">{t.ecpmImpr}</span>
+        <span className="text-[11px] uppercase tracking-wider text-neutral-500">{hasViewable ? t.ecpmViewableImpr : t.ecpmImpr}</span>
         <span className="font-mono font-bold text-cream text-[18px] tabular">{fmtInt(Math.round(adImpr))}</span>
         <span className="text-[11px] text-neutral-500">/ {t.ecpmPerMonth}</span>
       </div>
@@ -638,7 +640,9 @@ function EcpmView({
         </tbody>
       </table>
       <p className="text-[11px] text-neutral-500">
-        {t.ecpmAssume.replace("{slots}", String(SLOTS)).replace("{fill}", String(Math.round(FILL * 100)))}
+        {hasViewable
+          ? t.ecpmBasisReal.replace("{fill}", String(Math.round(FILL * 100)))
+          : t.ecpmAssume.replace("{slots}", String(SLOTS)).replace("{fill}", String(Math.round(FILL * 100)))}
       </p>
     </div>
   );

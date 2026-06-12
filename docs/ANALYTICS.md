@@ -16,7 +16,8 @@
 | `session_start` | 每会话首个事件前自动补发一次 | device / os / browser / vw / sw / lang / tz / channel / utm_source·medium·campaign / landing / returning / dsf / standalone |
 | `pwa_install` | 安装为 App（Android / 桌面 Chrome 的 appinstalled） | — |
 | `page_view` | 路由变化 | （ticker 列：个股页带标的） |
-| `page_leave` | 离开/隐藏/卸载当前页 | ms（活跃停留毫秒）/ clicks（本页点击）/ maxScroll（最大滚动深度 %） |
+| `page_leave` | 离开/隐藏/卸载当前页 | ms（**互动时长**毫秒：仅前台+有操作累计，空闲 60s 暂停，单段封顶 30 分钟）/ clicks / maxScroll（最大滚动深度 %） |
+| `ad_view` | 广告位「可见曝光」（MRC：≥50% 可见且连续 ≥1 秒、前台） | slot（广告位 id：dash_hero / dash_feed / post_body…） |
 | `search` | 站内搜索提交 | q（搜索词）/ found（是否命中） |
 | `share` | 点击分享/复制 | platform |
 | `translate_toggle` | 切换原文/译文 | mode |
@@ -41,7 +42,7 @@
 | 转化 | `analytics_funnel` | 落地→看板→个股→帖子→分享（各阶段独立访客） |
 | 留存 | `analytics_retention` | N 日留存曲线 + 按获取日期的同期群三角（UTC+8） |
 | 回访(周) | `analytics_returning` + `analytics_retention_weekly` | 每周新/回访活跃、回访频次、WAU/MAU 粘性、周同期群留存 |
-| 变现 | `analytics_inventory` | 月广告展示/访客/会话（供前端估 eCPM） |
+| 变现 | `analytics_inventory` | 月页面浏览/访客/会话 + **可见曝光(ad_view)**；前端 eCPM 优先用真实可见曝光，无则回退页面浏览估算 |
 | 保存 | `analytics_pwa` | 加到主屏/独立启动人数 + 安装次数（≈「存下网站」的可追踪信号） |
 | 明细 | `analytics_recent` / `analytics_event_breakdown` / `analytics_top_tickers` / `analytics_lang_split` / `analytics_shares` | 事件流与分布 |
 

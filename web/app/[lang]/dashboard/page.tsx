@@ -3,6 +3,7 @@ import { Panel, SectionTitle, Eyebrow, MiniBar, ScoreNum } from "@/components/ui
 import { FeedGrid } from "@/components/FeedGrid";
 import { NarrativeCard } from "@/components/NarrativeCard";
 import { TodaysAlpha } from "@/components/TodaysAlpha";
+import { ViewTracker } from "@/components/ViewTracker";
 import { IconFlame, IconWaves } from "@/components/icons";
 import { fmtInt, sentTextClass } from "@/lib/format";
 import { getDictionary, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
@@ -29,8 +30,11 @@ export default function Overview({ params }: { params: { lang: string } }) {
   return (
     <div className="space-y-4">
       {/* 首页头牌：今日 Reddit Alpha（置顶、Reddit 橙主题、视觉最强）。
-          数据可信度「依据模块」已移至顶部 banner（Topbar）。 */}
-      <TodaysAlpha alphas={alpha} />
+          数据可信度「依据模块」已移至顶部 banner（Topbar）。
+          ViewTracker：测该位「可见曝光」(MRC 50%×1s)，用于真实 eCPM 估算。 */}
+      <ViewTracker slot="dash_hero">
+        <TodaysAlpha alphas={alpha} />
+      </ViewTracker>
 
       {/* Masthead */}
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 pb-4 border-b border-line">
@@ -156,11 +160,11 @@ export default function Overview({ params }: { params: { lang: string } }) {
         </div>
       </div>
 
-      {/* 高质量 DD 帖（getFeed 已按 quality 排序） */}
-      <div>
+      {/* 高质量 DD 帖（getFeed 已按 quality 排序）。ViewTracker：信息流中部广告位的可见曝光。 */}
+      <ViewTracker slot="dash_feed">
         <SectionTitle title={t.ddTitle} accent="neutral" icon="doc" />
         <FeedGrid posts={feed} initial={6} />
-      </div>
+      </ViewTracker>
     </div>
   );
 }

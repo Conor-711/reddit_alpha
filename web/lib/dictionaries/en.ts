@@ -238,6 +238,8 @@ export const en: Dictionary = {
     // —— Ad inventory eCPM ——
     ecpmTitle: "Ad inventory value · eCPM",
     ecpmImpr: "Monthly ad impressions",
+    ecpmViewableImpr: "Monthly viewable impressions",
+    ecpmBasisReal: "Based on real viewable impressions (MRC: ≥50% in view for ≥1s) at {fill}% fill. Finance / investor audiences sit at the premium eCPM end.",
     ecpmPerMonth: "per month",
     ecpmColTier: "Scenario",
     ecpmColCpm: "eCPM",

@@ -239,6 +239,8 @@ export const zh = {
     // —— 广告位 eCPM 估算 ——
     ecpmTitle: "广告位价值估算 · eCPM",
     ecpmImpr: "月广告展示",
+    ecpmViewableImpr: "月可见曝光",
+    ecpmBasisReal: "基于真实可见曝光（MRC：≥50% 可见且连续 ≥1 秒）；填充率 {fill}%。金融 / 投资受众通常处于 eCPM 高位区间。",
     ecpmPerMonth: "每月",
     ecpmColTier: "情景",
     ecpmColCpm: "eCPM",
