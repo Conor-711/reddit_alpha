@@ -44,40 +44,33 @@ export function SaveButton({
     void toggle(kind, refId, snapshot);
   };
 
-  if (variant === "follow") {
-    const pad = size === "xs" ? "text-[11px] px-1.5 py-0.5 gap-0.5" : "text-xs px-2 py-1 gap-1";
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-pressed={saved}
-        title={saved ? t.following : t.follow}
-        className={`inline-flex items-center rounded-md font-medium ring-1 ring-inset transition ${pad} ${
-          saved
-            ? "bg-reddit/12 text-reddit ring-reddit/25"
-            : "text-neutral-400 ring-white/10 hover:text-reddit hover:ring-reddit/30"
-        } ${className}`}
-      >
-        {saved ? <IconCheck className="w-3 h-3" /> : <IconPlus className="w-3 h-3" />}
-        {saved ? t.following : t.follow}
-      </button>
-    );
-  }
-
-  // bookmark
-  const box = size === "xs" ? "w-6 h-6" : "w-7 h-7";
-  const ic = size === "xs" ? "w-4 h-4" : "w-[18px] h-[18px]";
+  // 两种形态统一为「带文字标签的胶囊」：静止态也有可见底色 + 描边（不再是隐形灰图标），
+  // 悬停高亮品牌橙，已收藏 / 已追踪填充橙色。整体放大以更醒目。
+  const isFollow = variant === "follow";
+  const label = saved ? (isFollow ? t.following : t.saved) : isFollow ? t.follow : t.save;
+  const pad =
+    size === "xs"
+      ? "text-[11px] px-2 py-1 gap-1"
+      : "text-[13px] px-3 py-1.5 gap-1.5";
+  const ic = size === "xs" ? "w-3.5 h-3.5" : "w-4 h-4";
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={saved}
-      title={saved ? t.saved : t.save}
-      className={`inline-flex items-center justify-center rounded-md transition hover:bg-white/5 ${box} ${
-        saved ? "text-reddit" : "text-neutral-500 hover:text-reddit"
+      title={label}
+      className={`inline-flex items-center self-center rounded-full font-semibold ring-1 ring-inset transition ${pad} ${
+        saved
+          ? "bg-reddit text-white ring-reddit shadow-sm hover:bg-reddit/90"
+          : "bg-reddit/10 text-reddit ring-reddit/40 hover:bg-reddit/20 hover:ring-reddit/60"
       } ${className}`}
     >
-      <IconBookmark filled={saved} className={ic} />
+      {isFollow ? (
+        saved ? <IconCheck className={ic} /> : <IconPlus className={ic} />
+      ) : (
+        <IconBookmark filled={saved} className={ic} />
+      )}
+      {label}
     </button>
   );
 }

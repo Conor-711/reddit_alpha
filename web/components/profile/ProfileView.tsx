@@ -78,66 +78,111 @@ export function ProfileView() {
     : k === "ticker" ? p.emptyTickers
     : p.emptyAuthors;
 
+  const statLabel = (k: CollectionKind) =>
+    k === "post" ? p.statPosts
+    : k === "comment" ? p.statComments
+    : k === "subreddit" ? p.statCommunities
+    : k === "ticker" ? p.statTickers
+    : p.statAuthors;
+
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="max-w-3xl mx-auto space-y-6">
       <header>
-        <h1 className="font-display font-extrabold text-cream text-2xl">{p.title}</h1>
+        <h1 className="font-display font-extrabold text-cream text-2xl sm:text-[28px] tracking-tight">{p.title}</h1>
         <p className="mt-1 text-sm text-neutral-500">{p.subtitle}</p>
       </header>
 
-      <Panel className="p-5 flex items-center gap-4">
-        {avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatar} alt={name} className="w-14 h-14 rounded-full object-cover ring-1 ring-white/10" referrerPolicy="no-referrer" />
-        ) : (
-          <span className="grid place-items-center w-14 h-14 rounded-full bg-reddit/90 text-white text-xl font-bold ring-1 ring-white/10">
-            {(name.charAt(0) || "U").toUpperCase()}
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="font-display font-bold text-cream text-lg truncate">{name}</div>
-          <div className="text-sm text-neutral-500 truncate">{user.email}</div>
+      {/* 身份卡：顶部品牌渐变条 + 大头像 + 信息 */}
+      <Panel className="overflow-hidden">
+        <div className="h-1.5 bg-gradient-to-r from-reddit via-reddit/70 to-bull/70" />
+        <div className="p-5 flex items-center gap-4">
+          {avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatar} alt={name} className="w-16 h-16 rounded-full object-cover ring-2 ring-reddit/30" referrerPolicy="no-referrer" />
+          ) : (
+            <span className="grid place-items-center w-16 h-16 rounded-full bg-reddit text-white text-2xl font-bold ring-2 ring-reddit/30">
+              {(name.charAt(0) || "U").toUpperCase()}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="font-display font-bold text-cream text-lg truncate">{name}</div>
+            <div className="text-sm text-neutral-500 truncate">{user.email}</div>
+          </div>
+          <LocaleLink href="/account" className="text-xs font-medium text-neutral-400 hover:text-reddit transition shrink-0">
+            {p.accountSettings} →
+          </LocaleLink>
         </div>
-        <LocaleLink href="/account" className="text-xs text-neutral-400 hover:text-reddit transition shrink-0">
-          {p.accountSettings} →
-        </LocaleLink>
       </Panel>
 
-      {/* 标签栏（计数取自全局已加载的 keys） */}
-      <div className="flex flex-wrap gap-1.5 border-b border-line pb-2">
-        {TAB_KINDS.map((k) => {
-          const active = k === kind;
-          const n = countOf(k);
-          return (
-            <button
-              key={k}
-              onClick={() => setKind(k)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                active ? "bg-reddit/12 text-reddit" : "text-neutral-400 hover:text-cream hover:bg-white/5"
-              }`}
-            >
-              {label(k)}
-              {n > 0 && (
-                <span className={`ml-1.5 text-[11px] tabular ${active ? "text-reddit" : "text-neutral-600"}`}>{n}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 内容 */}
-      {busy ? (
-        <div className="py-16 text-center text-sm text-neutral-500">{p.loading}</div>
-      ) : rows.length === 0 ? (
-        <div className="py-16 text-center text-sm text-neutral-500">{emptyText(kind)}</div>
-      ) : (
-        <div className="space-y-2.5">
-          {rows.map((r) => (
-            <CollectionItem key={`${r.kind}:${r.ref_id}`} row={r} lang={lang} p={p} />
-          ))}
+      {/* 收藏总览：5 张统计卡，同时作为分区切换 */}
+      <section>
+        <div className="flex items-center gap-2 mb-2.5">
+          <span className="w-[3px] h-3.5 rounded-full bg-reddit shrink-0" />
+          <h2 className="font-display text-[13px] font-bold text-cream tracking-tight">{p.overview}</h2>
         </div>
-      )}
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          {TAB_KINDS.map((k) => {
+            const active = k === kind;
+            const n = countOf(k);
+            return (
+              <button
+                key={k}
+                onClick={() => setKind(k)}
+                aria-pressed={active}
+                className={`rounded-xl px-3 py-3 text-left ring-1 ring-inset transition ${
+                  active
+                    ? "bg-reddit text-white ring-reddit shadow-sm"
+                    : "bg-card ring-line hover:ring-reddit/40 hover:-translate-y-0.5"
+                }`}
+              >
+                <div className={`font-display text-2xl font-extrabold tabular leading-none ${active ? "text-white" : "text-cream"}`}>{n}</div>
+                <div className={`mt-1.5 text-xs font-medium ${active ? "text-white/85" : "text-neutral-500"}`}>{statLabel(k)}</div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 当前分区 */}
+      <section className="space-y-3">
+        <div className="flex items-baseline gap-2">
+          <h3 className="font-display text-sm font-bold text-cream">{label(kind)}</h3>
+          {!busy && rows.length > 0 && <span className="text-xs text-neutral-500 tabular">{rows.length}</span>}
+        </div>
+
+        {busy ? (
+          <div className="py-16 text-center text-sm text-neutral-500">{p.loading}</div>
+        ) : rows.length === 0 ? (
+          <Panel className="py-14 px-6 flex flex-col items-center text-center gap-3">
+            <span className="grid place-items-center w-12 h-12 rounded-full bg-reddit/10 text-reddit">
+              <EmptyIcon kind={kind} />
+            </span>
+            <p className="text-sm text-neutral-500 max-w-xs leading-relaxed">{emptyText(kind)}</p>
+            <LocaleLink
+              href="/dashboard"
+              className="mt-1 inline-flex items-center gap-1 rounded-full bg-reddit text-white text-xs font-semibold px-3.5 py-1.5 hover:bg-reddit/90 transition"
+            >
+              {p.goDashboard} →
+            </LocaleLink>
+          </Panel>
+        ) : (
+          <div className="space-y-2.5">
+            {rows.map((r) => (
+              <CollectionItem key={`${r.kind}:${r.ref_id}`} row={r} lang={lang} p={p} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
+  );
+}
+
+function EmptyIcon({ kind }: { kind: CollectionKind }) {
+  const follow = kind === "subreddit" || kind === "ticker" || kind === "author";
+  return (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {follow ? <path d="M12 5v14M5 12h14" /> : <path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z" />}
+    </svg>
   );
 }
 
