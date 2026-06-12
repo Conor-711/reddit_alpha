@@ -34,11 +34,14 @@ interface SearchTerm { term: string; n: number; found: number }
 interface Retention { max: number; cohorts: { date: string; size: number; pct: (number | null)[] }[]; curve: { d: number; pct: number | null }[] }
 interface Inventory { days: number; impressions: number; visitors: number; sessions: number }
 interface Pwa { standalone_visitors: number; standalone_sessions: number; installs: number }
+interface WeekRow { week: string; new: number; returning: number; total: number }
+interface Returning { weeks: WeekRow[]; frequency: KN[]; wau: number; mau: number; stickiness: number }
 interface Data {
   overview: Overview; engagement: Engagement | null; engagedPaths: EngagedPath[];
   audience: Audience | null; channels: Channels | null; funnel: Funnel | null;
   hourly: { hour: number; n: number }[]; searchTerms: SearchTerm[];
   retention: Retention | null; inventory: Inventory | null; pwa: Pwa | null;
+  returning: Returning | null; retentionWeekly: Retention | null;
   daily: Daily[]; topPaths: Pair[];
   events: Pair[]; tickers: Pair[]; langs: Pair[];
   sources: Pair[]; shares: Pair[]; recent: Recent[];
@@ -63,7 +66,7 @@ export function InsightsDashboard() {
   const load = useCallback(async () => {
     setFetching(true);
     setFailed(false);
-    const [overview, engagement, engagedPaths, audience, channels, funnel, hourly, searchTerms, retention, inventory, pwa, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
+    const [overview, engagement, engagedPaths, audience, channels, funnel, hourly, searchTerms, retention, inventory, pwa, returning, retentionWeekly, daily, topPaths, events, tickers, langs, sources, shares, recent] = await Promise.all([
       analyticsRpc<Overview>("analytics_overview"),
       analyticsRpc<Engagement>("analytics_engagement", { p_days: 30 }),
       analyticsRpc<EngagedPath[]>("analytics_top_paths_engaged", { p_limit: 8, p_days: 30 }),
@@ -75,6 +78,8 @@ export function InsightsDashboard() {
       analyticsRpc<Retention>("analytics_retention", { p_days: 21, p_max: 7 }),
       analyticsRpc<Inventory>("analytics_inventory", { p_days: 30 }),
       analyticsRpc<Pwa>("analytics_pwa", { p_days: 30 }),
+      analyticsRpc<Returning>("analytics_returning", { p_weeks: 8 }),
+      analyticsRpc<Retention>("analytics_retention_weekly", { p_weeks: 8, p_max: 6 }),
       analyticsRpc<Daily[]>("analytics_daily", { p_days: 14 }),
       analyticsRpc<{ path: string; views: number }[]>("analytics_top_paths", { p_limit: 8, p_days: 30 }),
       analyticsRpc<{ event_type: string; n: number }[]>("analytics_event_breakdown", { p_days: 30 }),
@@ -100,6 +105,8 @@ export function InsightsDashboard() {
         retention: retention ?? null,
         inventory: inventory ?? null,
         pwa: pwa ?? null,
+        returning: returning ?? null,
+        retentionWeekly: retentionWeekly ?? null,
         daily: daily ?? [],
         topPaths: (topPaths ?? []).map((r) => ({ label: r.path, value: Number(r.views) })),
         events: (events ?? []).map((r) => ({ label: r.event_type, value: Number(r.n) })),
@@ -231,6 +238,41 @@ export function InsightsDashboard() {
                 <Card title={t.langSplit}><BarList items={data.langs} empty={t.noData} unit={t.unit} /></Card>
                 <Card title={t.activeHours}><HourBars data={data.hourly} hint={t.activeHoursHint} /></Card>
               </div>
+            </>
+          )}
+
+          {/* —— 回访（周维度）：周回访 / 粘性 / 频次 —— */}
+          {data.returning && (
+            <>
+              <SectionLabel hint={t.secReturningHint}>{t.secReturning}</SectionLabel>
+              {(() => {
+                const wk = data.returning.weeks;
+                const last = wk.length ? wk[wk.length - 1] : null;
+                const wau = last?.total ?? data.returning.wau;
+                const ret = last?.returning ?? 0;
+                const rate = last && last.total > 0 ? Math.round((last.returning / last.total) * 100) : 0;
+                return (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <Kpi label={t.kpiWau} value={wau} />
+                    <Kpi accent label={t.kpiWeekReturn} value={ret} />
+                    <Kpi accent label={t.kpiWeekReturnRate} text={`${rate}%`} sub={t.weekReturnHint} />
+                    <Kpi label={t.kpiStickiness} text={`${data.returning.stickiness}%`} sub={t.stickinessHint} />
+                  </div>
+                );
+              })()}
+              <div className="grid lg:grid-cols-2 gap-4">
+                <Card title={t.weeklyTrendTitle}><WeeklyVisitors rows={data.returning.weeks} t={t} /></Card>
+                <Card title={t.freqTitle}>
+                  <BarList items={kn(data.returning.frequency).map((p) => ({ label: `${p.label}${t.freqWeekSuffix}`, value: p.value }))} empty={t.noData} unit={t.unit} />
+                </Card>
+              </div>
+              {data.retentionWeekly && data.retentionWeekly.cohorts.length > 0 && (
+                <div className="grid lg:grid-cols-2 gap-4">
+                  <Card title={t.weeklyCurveTitle}><RetentionCurve r={data.retentionWeekly} unit="W" /></Card>
+                  <Card title={t.weeklyCohortTitle}><CohortTable r={data.retentionWeekly} t={t} unit="W" /></Card>
+                </div>
+              )}
+              <p className="text-[11px] text-neutral-500 -mt-1">{t.weeklyNote}</p>
             </>
           )}
 
@@ -478,8 +520,8 @@ function FunnelView({ f, t }: { f: Funnel; t: { stLanding: string; stDashboard: 
   );
 }
 
-// N 日留存曲线（聚合，按已满 n 天的同期群加权）
-function RetentionCurve({ r }: { r: Retention }) {
+// 留存曲线（聚合，按已满 n 期的同期群加权）。unit="D" 日 / "W" 周。
+function RetentionCurve({ r, unit = "D" }: { r: Retention; unit?: "D" | "W" }) {
   return (
     <div className="flex items-end gap-2 h-28">
       {r.curve.map((p) => (
@@ -488,17 +530,17 @@ function RetentionCurve({ r }: { r: Retention }) {
           <div
             className="w-full rounded-t bg-reddit/60"
             style={{ height: `${p.pct == null ? 2 : Math.max(2, p.pct)}%` }}
-            title={`D${p.d} · ${p.pct ?? "—"}%`}
+            title={`${unit}${p.d} · ${p.pct ?? "—"}%`}
           />
-          <span className="mt-1 text-[10px] font-mono text-neutral-500">D{p.d}</span>
+          <span className="mt-1 text-[10px] font-mono text-neutral-500">{unit}{p.d}</span>
         </div>
       ))}
     </div>
   );
 }
 
-// 同期群三角（行=获取日期，列=D0..Dmax，单元格=留存%热力）
-function CohortTable({ r, t }: { r: Retention; t: { retColCohort: string; retColSize: string; noData: string } }) {
+// 同期群三角（行=获取日期/周，列=N0..Nmax，单元格=留存%热力）。unit="D" 日 / "W" 周。
+function CohortTable({ r, t, unit = "D" }: { r: Retention; t: { retColCohort: string; retColSize: string; noData: string }; unit?: "D" | "W" }) {
   if (!r.cohorts.length) return <p className="text-sm text-neutral-600 py-2">{t.noData}</p>;
   const cols = r.max + 1;
   return (
@@ -509,7 +551,7 @@ function CohortTable({ r, t }: { r: Retention; t: { retColCohort: string; retCol
             <th className="font-medium pb-2 pr-2">{t.retColCohort}</th>
             <th className="font-medium pb-2 pr-2 text-right">{t.retColSize}</th>
             {Array.from({ length: cols }).map((_, i) => (
-              <th key={i} className="font-medium pb-2 px-1 text-center font-mono">D{i}</th>
+              <th key={i} className="font-medium pb-2 px-1 text-center font-mono">{unit}{i}</th>
             ))}
           </tr>
         </thead>
@@ -598,6 +640,36 @@ function EcpmView({
       <p className="text-[11px] text-neutral-500">
         {t.ecpmAssume.replace("{slots}", String(SLOTS)).replace("{fill}", String(Math.round(FILL * 100)))}
       </p>
+    </div>
+  );
+}
+
+// 每周活跃访客：新(浅) 与 回访(深) 堆叠柱
+function WeeklyVisitors({ rows, t }: { rows: WeekRow[]; t: { audNew: string; audReturning: string; noData: string } }) {
+  if (!rows.length) return <p className="text-sm text-neutral-600 py-2">{t.noData}</p>;
+  const max = Math.max(1, ...rows.map((r) => r.total));
+  return (
+    <div>
+      <div className="flex items-end gap-1.5 h-32">
+        {rows.map((r) => (
+          <div
+            key={r.week}
+            className="group relative flex-1 flex flex-col justify-end"
+            title={`${r.week.slice(5)} · ${t.audNew} ${r.new} / ${t.audReturning} ${r.returning}`}
+          >
+            <div className="w-full rounded-t bg-reddit transition-all" style={{ height: `${Math.round((r.returning / max) * 100)}%` }} />
+            <div className="w-full bg-reddit/30 transition-all" style={{ height: `${Math.round((r.new / max) * 100)}%` }} />
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex justify-between text-[10px] text-neutral-600 font-mono">
+        <span>{rows[0]?.week.slice(5)}</span>
+        <span>{rows[rows.length - 1]?.week.slice(5)}</span>
+      </div>
+      <div className="mt-2 flex items-center gap-4 text-[11px] text-neutral-400">
+        <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-sm bg-reddit/30" />{t.audNew}</span>
+        <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-sm bg-reddit" />{t.audReturning}</span>
+      </div>
     </div>
   );
 }

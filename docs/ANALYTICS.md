@@ -40,6 +40,7 @@
 | 内容意图 | `analytics_search_terms` | 站内搜索词 + 命中数（内容缺口） |
 | 转化 | `analytics_funnel` | 落地→看板→个股→帖子→分享（各阶段独立访客） |
 | 留存 | `analytics_retention` | N 日留存曲线 + 按获取日期的同期群三角（UTC+8） |
+| 回访(周) | `analytics_returning` + `analytics_retention_weekly` | 每周新/回访活跃、回访频次、WAU/MAU 粘性、周同期群留存 |
 | 变现 | `analytics_inventory` | 月广告展示/访客/会话（供前端估 eCPM） |
 | 保存 | `analytics_pwa` | 加到主屏/独立启动人数 + 安装次数（≈「存下网站」的可追踪信号） |
 | 明细 | `analytics_recent` / `analytics_event_breakdown` / `analytics_top_tickers` / `analytics_lang_split` / `analytics_shares` | 事件流与分布 |
