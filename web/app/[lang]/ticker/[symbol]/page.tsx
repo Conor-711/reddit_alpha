@@ -5,6 +5,7 @@ import { SectionTitle, Eyebrow, MiniBar, ScoreNum, ThemeTag, Avatar } from "@/co
 import { Sparkline } from "@/components/charts/Sparkline";
 import { FeedCard } from "@/components/FeedCard";
 import { ShareBar } from "@/components/ShareBar";
+import { SaveButton } from "@/components/favorites/SaveButton";
 import { SnooMascot } from "@/components/reddit";
 import { fmtInt, fmtPct, fmtCompact, sentTextClass } from "@/lib/format";
 import { getTickerDetail, getAllTickerSymbols } from "@/lib/queries";
@@ -78,6 +79,7 @@ export default function TickerPage({ params }: { params: { lang: string; symbol:
                   {d.meta.sector}
                 </span>
               )}
+              <SaveButton kind="ticker" refId={d.ticker} variant="follow" />
             </div>
             <div className="mt-1 text-neutral-500">{name}{d.meta?.exchange ? ` · ${d.meta.exchange}` : ""}</div>
           </div>

@@ -24,6 +24,7 @@ function AvatarBubble({ name, src, size = 30 }: { name: string; src: string | nu
 export function UserMenu() {
   const { dict } = useLocale();
   const t = dict.auth;
+  const p = dict.profile;
   const { user, loading, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -72,6 +73,14 @@ export function UserMenu() {
             <div className="text-xs text-neutral-500 truncate">{user.email}</div>
           </div>
           <div className="h-px bg-line my-1" />
+          <LocaleLink
+            href="/me"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:bg-white/5 hover:text-cream transition"
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z" /></svg>
+            {p.navTitle}
+          </LocaleLink>
           <LocaleLink
             href="/account"
             onClick={() => setOpen(false)}

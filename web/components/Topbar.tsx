@@ -5,8 +5,7 @@ import { SearchBox } from "./SearchBox";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { SidebarToggle } from "./SidebarToggle";
 import type { Locale, Dictionary } from "@/lib/i18n";
-// v1：账号系统暂未启用（保留组件，后续版本再开）
-// import { UserMenu } from "./auth/UserMenu";
+import { UserMenu } from "./auth/UserMenu";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
@@ -70,7 +69,7 @@ export function Topbar({ lang, dict }: { lang: Locale; dict: Dictionary }) {
           <div className="lg:hidden">
             <LanguageSwitcher />
           </div>
-          {/* v1：账号系统暂未启用 */}
+          <UserMenu />
         </div>
       </div>
     </header>

@@ -6,6 +6,8 @@ import { SentPill, TickerChip, ThemeTag, SubredditChip, Avatar } from "./ui";
 import { IconUpvote, IconDownvote, IconComment } from "./icons";
 import { timeAgo, fmtCompact } from "@/lib/format";
 import type { FeedRow } from "@/lib/queries";
+import { SaveButton } from "./favorites/SaveButton";
+import { postSnapshotFromFeed } from "@/lib/favorites";
 
 export function FeedCard({ p, tickerBase = "/ticker" }: { p: FeedRow; tickerBase?: string }) {
   const { lang, dict } = useLocale();
@@ -58,6 +60,9 @@ export function FeedCard({ p, tickerBase = "/ticker" }: { p: FeedRow; tickerBase
           {p.themes.slice(0, 2).map((t) => (
             <ThemeTag key={t}>{t}</ThemeTag>
           ))}
+          <span className="ml-auto shrink-0">
+            <SaveButton kind="post" refId={p.id} snapshot={postSnapshotFromFeed(p)} size="xs" />
+          </span>
         </div>
       </div>
     </div>
