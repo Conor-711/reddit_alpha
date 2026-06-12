@@ -7,6 +7,7 @@ import { CommunityIcon } from "./CommunityIcon";
 import { IconChevron, IconSearch } from "./icons";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
+import { SaveButton } from "./favorites/SaveButton";
 import type { Locale, Dictionary } from "@/lib/i18n";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
@@ -55,6 +56,9 @@ export function Sidebar({ dict }: { lang: Locale; dict: Dictionary }) {
                 {c.subscribers > 0 && (
                   <span className="sb-label text-[10px] text-neutral-600 tabular shrink-0">{fmtCompact(c.subscribers)}</span>
                 )}
+                <span className="sb-label shrink-0">
+                  <SaveButton kind="subreddit" refId={c.id} variant="follow" size="xs" />
+                </span>
               </div>
             ))}
           </div>

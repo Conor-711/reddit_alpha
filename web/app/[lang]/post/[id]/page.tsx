@@ -6,6 +6,8 @@ import { MarkdownLite } from "@/components/MarkdownLite";
 import { Comments } from "@/components/Comments";
 import { TranslateToggle } from "@/components/TranslateToggle";
 import { ShareBar } from "@/components/ShareBar";
+import { SaveButton } from "@/components/favorites/SaveButton";
+import { postSnapshot } from "@/lib/favorites";
 import { IconUpvote, IconComment, IconDoc, IconList } from "@/components/icons";
 import { timeAgo, fmtCompact, fmtInt, REDDIT } from "@/lib/format";
 import { getPostDetail, getAllPostIds } from "@/lib/queries";
@@ -59,7 +61,14 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
     <article className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between gap-3 mb-6">
         <LocaleLink href="/dashboard" className="text-xs text-neutral-500 hover:text-reddit transition">{t.back}</LocaleLink>
-        <ShareBar path={`/${lang}/post/${post.id}`} text={sh.postText.replace("{s}", postTitle)} ticker={analysis?.tickers?.[0]?.ticker} />
+        <div className="flex items-center gap-2">
+          <SaveButton
+            kind="post"
+            refId={post.id}
+            snapshot={postSnapshot({ title: post.title, title_zh: post.title_zh, subreddit: post.subreddit, author: post.author, tldr: analysis?.tldr, tldr_zh: analysis?.tldr_zh, score: post.score, created: post.created })}
+          />
+          <ShareBar path={`/${lang}/post/${post.id}`} text={sh.postText.replace("{s}", postTitle)} ticker={analysis?.tickers?.[0]?.ticker} />
+        </div>
       </div>
 
       {/* ① 标题 / 帖头 —— masthead（投票轨 + 元信息 + 标题），底部分隔线 */}
@@ -74,10 +83,14 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
             <SubredditChip name={post.subreddit} />
+            <SaveButton kind="subreddit" refId={post.subreddit} variant="follow" size="xs" />
             {post.author && (
-              <span className="inline-flex items-center gap-1">
-                · <Avatar name={post.author} size={15} /> u/{post.author}
-              </span>
+              <>
+                <span className="inline-flex items-center gap-1">
+                  · <Avatar name={post.author} size={15} /> u/{post.author}
+                </span>
+                <SaveButton kind="author" refId={post.author} variant="follow" size="xs" />
+              </>
             )}
             <span>· {timeAgo(post.created, lang)}</span>
             {post.flair && (
@@ -153,8 +166,8 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
         />
         <TranslateToggle
           hasZh={comments.some((c) => !!c.body_zh)}
-          original={<Comments comments={comments} showZh={false} />}
-          zh={<Comments comments={comments} showZh={true} />}
+          original={<Comments comments={comments} showZh={false} postId={post.id} postTitle={post.title} postTitleZh={post.title_zh} />}
+          zh={<Comments comments={comments} showZh={true} postId={post.id} postTitle={post.title} postTitleZh={post.title_zh} />}
         />
       </section>
 

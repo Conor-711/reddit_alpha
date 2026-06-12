@@ -64,6 +64,9 @@ redditalpha 是**静态站点**，账号系统用 **Supabase Auth**（客户端 
 ## 功能清单
 - `/login`、`/signup`：Google 一键 + 邮箱密码；`/forgot-password`、`/reset-password`：邮件重置；`/account`：资料/改密/登出；`/auth/callback`：OAuth 回调。
 - 顶栏用户菜单（头像/邮箱/登出），全局会话由 `AuthProvider` 维护。
+- `/me`（个人主页·私密）：帖子/评论收藏、社区/标的/作者追踪；全站卡片上的书签/「追踪」按钮由 `FavoritesProvider` + `SaveButton` 驱动。
+  数据存 Supabase 的 `user_collections`（RLS 仅本人可读写）。**需先在 SQL Editor 执行迁移
+  `supabase/migrations/20260612000007_user_collections.sql`**，否则收藏/追踪会静默写入失败。
 
 ## 说明
 - 密码哈希、会话、令牌刷新均由 Supabase 处理；静态站点用客户端会话（localStorage）。

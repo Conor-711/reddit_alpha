@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { FavoritesProvider } from "@/components/favorites/FavoritesProvider";
 import { PwaRegister } from "@/components/PwaRegister";
 import { SITE_URL, BASE_PATH, OG_IMAGE } from "@/lib/site";
 
@@ -50,7 +51,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="bg-ink text-neutral-300 font-sans antialiased">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <FavoritesProvider>{children}</FavoritesProvider>
+        </AuthProvider>
         <PwaRegister />
       </body>
     </html>
