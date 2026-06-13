@@ -23,7 +23,22 @@ export async function signUpWithEmail(email: string, password: string) {
     options: { emailRedirectTo: appRedirect("/auth/callback/") },
   });
   if (error) throw error;
-  return data; // data.session === null → 需邮箱确认
+  return data; // data.session === null → 需邮箱确认（走验证码 OTP）
+}
+
+// 验证「注册确认」6 位验证码（OTP）。成功返回含 session 的 data → 即已登录。
+export async function verifyEmailOtp(email: string, token: string) {
+  if (!supabase) throw new Error(AUTH_NOT_CONFIGURED);
+  const { data, error } = await supabase.auth.verifyOtp({ email, token: token.trim(), type: "signup" });
+  if (error) throw error;
+  return data;
+}
+
+// 重发注册验证码（同一封「Confirm signup」邮件，模板含 {{ .Token }} 时即为 6 位码）。
+export async function resendSignupCode(email: string) {
+  if (!supabase) throw new Error(AUTH_NOT_CONFIGURED);
+  const { error } = await supabase.auth.resend({ type: "signup", email });
+  if (error) throw error;
 }
 
 export async function signInWithGoogle() {
@@ -75,6 +90,10 @@ export function friendlyError(e: unknown): string {
     "Password should be at least 6 characters": "密码至少 6 位。",
     "Unable to validate email address: invalid format": "邮箱格式不正确。",
     "For security purposes, you can only request this after 60 seconds.": "操作过于频繁，请 60 秒后再试。",
+    "Token has expired or is invalid": "验证码不正确或已过期，请重新获取。",
+    "Email link is invalid or has expired": "验证码不正确或已过期，请重新获取。",
+    "Invalid token": "验证码不正确。",
+    "Signups not allowed for otp": "该邮箱尚未注册，请先创建账号。",
   };
   return map[msg] || msg;
 }
