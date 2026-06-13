@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { LocaleLink } from "@/components/i18n/LocaleLink";
 import { notFound } from "next/navigation";
-import { SubredditChip, Avatar, SentPill, TickerChip, ThemeTag } from "@/components/ui";
+import { SubredditChip, SentPill, TickerChip, ThemeTag } from "@/components/ui";
+import { AuthorLink } from "@/components/author/AuthorLink";
 import { MarkdownLite } from "@/components/MarkdownLite";
 import { Comments } from "@/components/Comments";
 import { TranslateToggle } from "@/components/TranslateToggle";
@@ -10,7 +11,7 @@ import { SaveButton } from "@/components/favorites/SaveButton";
 import { postSnapshot } from "@/lib/favorites";
 import { IconUpvote, IconComment, IconDoc, IconList } from "@/components/icons";
 import { timeAgo, fmtCompact, fmtInt, REDDIT } from "@/lib/format";
-import { getPostDetail, getAllPostIds } from "@/lib/queries";
+import { getPostDetail, getAllPostIds, linkableAuthors } from "@/lib/queries";
 import { getDictionary, isLocale, defaultLocale, type Locale, type Dictionary } from "@/lib/i18n";
 import { SITE_URL, OG_IMAGE } from "@/lib/site";
 
@@ -48,6 +49,8 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
   const d = getPostDetail(params.id);
   if (!d) notFound();
   const { post, analysis, comments } = d;
+  // 评论区作者：只有「本身也发过帖」的作者才有作者页 → 据此决定是否加链接（其余纯文本，不 404）。
+  const commentLinkable = linkableAuthors(comments.map((c) => c.author).filter(Boolean) as string[]);
   const hasAI = analysis && (analysis.tldr || analysis.bull.length > 0 || analysis.bear.length > 0);
   const isZh = lang === "zh";
   // 标题 + 摘要直接给中文；正文 / 评论用「译文 / 原文」切换按钮。
@@ -87,7 +90,7 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
             {post.author && (
               <>
                 <span className="inline-flex items-center gap-1">
-                  · <Avatar name={post.author} size={15} /> u/{post.author}
+                  · <AuthorLink name={post.author} size={15} />
                 </span>
                 <SaveButton kind="author" refId={post.author} variant="follow" size="xs" />
               </>
@@ -166,8 +169,8 @@ export default function PostPage({ params }: { params: { lang: string; id: strin
         />
         <TranslateToggle
           hasZh={comments.some((c) => !!c.body_zh)}
-          original={<Comments comments={comments} showZh={false} postId={post.id} postTitle={post.title} postTitleZh={post.title_zh} />}
-          zh={<Comments comments={comments} showZh={true} postId={post.id} postTitle={post.title} postTitleZh={post.title_zh} />}
+          original={<Comments comments={comments} showZh={false} postId={post.id} postTitle={post.title} postTitleZh={post.title_zh} linkable={commentLinkable} />}
+          zh={<Comments comments={comments} showZh={true} postId={post.id} postTitle={post.title} postTitleZh={post.title_zh} linkable={commentLinkable} />}
         />
       </section>
 

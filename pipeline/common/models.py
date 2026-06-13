@@ -73,6 +73,8 @@ class Author(Base):
     last_seen: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
     post_count: Mapped[int] = mapped_column(Integer, default=0)
     influence_score: Mapped[float] = mapped_column(Float, default=0.0)
+    # 作者库：上次爬取其历史帖的时间。NULL=从未爬过；用于每日增量（只爬 NULL 或过期的）。
+    crawled_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime, nullable=True)
 
 
 class Post(Base):
@@ -81,6 +83,8 @@ class Post(Base):
     subreddit_id: Mapped[str] = mapped_column(String(64), ForeignKey("subreddits.id"), index=True)
     author_id: Mapped[Optional[str]] = mapped_column(String(80), ForeignKey("authors.id"), nullable=True, index=True)
     market: Mapped[str] = mapped_column(String(8), default="us", index=True)  # 随板块归属：us | cn
+    # 来源：scan=板块扫描（进实时舆情聚合）；author=作者库历史爬取（只进作者页，不污染实时聚合）。
+    source: Mapped[str] = mapped_column(String(8), default="scan", index=True)
     title: Mapped[str] = mapped_column(Text, default="")
     selftext: Mapped[str] = mapped_column(Text, default="")
     title_zh: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 中文译文（按需）

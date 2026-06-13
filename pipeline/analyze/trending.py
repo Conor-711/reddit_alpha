@@ -21,7 +21,7 @@ def run_trending(window_h: int = 24, recent_h: int = 6, market: str = "us") -> i
             .outerjoin(ItemAnalysis, and_(ItemAnalysis.item_id == Mention.item_id,
                                           ItemAnalysis.item_type == "post"))
             .where(Mention.item_type == "post", Mention.created_utc >= cutoff,
-                   Post.market == market)
+                   Post.market == market, Post.source == "scan")
         ).all()
 
         # cn 看板只统计策划的中概/港股/A 股宇宙（ticker_meta.market='cn'）；

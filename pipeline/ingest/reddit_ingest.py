@@ -38,9 +38,9 @@ def upsert_author(s, username: str | None, created_utc: dt.datetime | None = Non
 
 def upsert_post(s, *, id, subreddit_id, author_id, title, selftext, url, permalink,
                 flair, is_self, created_utc, score, upvote_ratio, num_comments, total_awards,
-                market: str = "us"):
+                market: str = "us", source: str = "scan"):
     s.merge(Post(
-        id=id, subreddit_id=subreddit_id, author_id=author_id, market=market, title=title,
+        id=id, subreddit_id=subreddit_id, author_id=author_id, market=market, source=source, title=title,
         selftext=selftext or "", url=url, permalink=permalink, flair=flair,
         is_self=is_self, created_utc=created_utc, score=score, upvote_ratio=upvote_ratio,
         num_comments=num_comments, total_awards=total_awards,

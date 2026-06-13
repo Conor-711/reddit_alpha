@@ -64,6 +64,10 @@ extract:
 scrape:
 	$(MANAGE) scrape --days 3 --limit 300
 
+# 作者库：爬「实力榜」Top 作者历史帖（两级漏斗：DeepSeek 粗筛 → 千问深析）。需 DeepSeek key。
+crawl-authors:
+	$(MANAGE) crawl-authors --limit 50
+
 # ---------- 每日一次（不再实时；以 UTC+8 24h 为界，08:00 跑一次）----------
 # 分析过去 24 小时：拉取 1 天的帖子/评论 + AI 打标 + 聚合。需要真实 Claude 则设 ANTHROPIC_API_KEY。
 daily:

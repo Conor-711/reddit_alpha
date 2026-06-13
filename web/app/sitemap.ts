@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL, BASE_PATH } from "@/lib/site";
 import { locales } from "@/lib/i18n";
-import { getAllTickerSymbols, getAllCnTickerSymbols, getAllPostIds } from "@/lib/queries";
+import { getAllTickerSymbols, getAllCnTickerSymbols, getAllPostIds, getLeaderboard } from "@/lib/queries";
 
 export const dynamic = "force-static";
 
@@ -24,6 +24,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const usT = getAllTickerSymbols();
   const cnT = getAllCnTickerSymbols();
   const posts = getAllPostIds();
+  // 作者页很多（每个有帖作者都有页），SEO 只收录实力榜 Top 100，避免大量薄页稀释权重。
+  const topAuthors = getLeaderboard(100).map((r) => r.author);
 
   const out: MetadataRoute.Sitemap = [];
   for (const lang of locales) {
@@ -33,6 +35,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     for (const sym of usT) out.push({ url: `${base}/${lang}/ticker/${sym}/`, lastModified: now, changeFrequency: "daily", priority: 0.6 });
     for (const sym of cnT) out.push({ url: `${base}/${lang}/cn/ticker/${sym}/`, lastModified: now, changeFrequency: "daily", priority: 0.6 });
     for (const id of posts) out.push({ url: `${base}/${lang}/post/${id}/`, lastModified: now, changeFrequency: "weekly", priority: 0.5 });
+    for (const a of topAuthors) out.push({ url: `${base}/${lang}/author/${encodeURIComponent(a)}/`, lastModified: now, changeFrequency: "weekly", priority: 0.5 });
   }
   return out;
 }

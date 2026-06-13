@@ -2,7 +2,7 @@
 
 > **维护约定**：本文件是项目的「活地图」。**每次对项目结构或功能有实质改动后，必须同步更新本文件对应章节**
 > （新增/删除模块、改数据流、改命令、改部署方式、改 schema 等）。详见根目录 `CLAUDE.md`。
-> 最近更新：2026-06-12。
+> 最近更新：2026-06-13。
 
 ---
 
@@ -64,6 +64,11 @@ Arctic Shift / PRAW ──▶ posts/comments ──▶ ticker 抽取(正则) ─
 
 **关键：分析是增量的** —— 逐帖打标按 `item_analysis.item_id` 持久化，只分析新帖；聚合表每次全量重算（纯 SQL，0 token）。
 
+**作者库（优质作者聚合页）** —— `make daily` 内（主分析之后）爬「实力榜」Top 50 作者的 Reddit 历史帖，
+两级模型漏斗控成本：**DeepSeek(LOW) 粗筛质量 → 仅过线帖送千问(HIGH) 深析并入库**。这些帖标记
+`posts.source='author'`，**被所有实时舆情聚合/feed 排除**（`source='scan'` 过滤），只出现在作者页与其自身帖详情页。
+入口：全站作者名/头像 → `/[lang]/author/[name]/`。详见 `pipeline/ingest/author_crawl.py`。
+
 ---
 
 ## 4. 目录结构（带注释）
@@ -86,6 +91,7 @@ crypto_us/
 │   ├── ingest/                #   抓取 + 抽取
 │   │   ├── arctic_scrape.py   #   Arctic Shift 拉历史帖/评论（主力）
 │   │   ├── reddit_ingest.py   #   PRAW 实时拉取
+│   │   ├── author_crawl.py    #   ★作者库：爬 Top 作者历史帖（DeepSeek 粗筛→千问深析，两级漏斗控成本）
 │   │   ├── ticker_extract.py  #   ★ticker 抽取器（cashtag/裸大写/公司名别名 + 停用表）
 │   │   └── seed_tickers.py    #   seed ticker 字典 → ticker_meta（含中概/港股 cn_hk_tickers.json）
 │   ├── analyze/              #   分析 + 聚合
@@ -106,6 +112,7 @@ crypto_us/
 │   │   │   ├── dashboard/     #     美股看板    cn/ 中概看板
 │   │   │   ├── ticker/[symbol]/  个股页   cn/ticker/[symbol]/
 │   │   │   ├── post/[id]/     #     帖子详情（AI 摘要 + 多空 + 评论 + 翻译切换）
+│   │   │   ├── author/[name]/  作者聚合页（代表作/看好看空标的/基础数据；全站作者名头像可点入）
 │   │   │   ├── search/ leaderboard/ insights(管理员看板) account/ me(个人主页·私密) login/ signup/ …
 │   │   ├── sitemap.ts / robots.ts / not-found.tsx   # SEO + 404
 │   │   └── icon.png           #   favicon
@@ -134,7 +141,7 @@ crypto_us/
 
 | 类别 | 表 | 说明 |
 |---|---|---|
-| 原始 | `subreddits` `authors` `posts` `comments` | 抓来的原始内容（含 `*_zh` 中文译文列、`market`） |
+| 原始 | `subreddits` `authors` `posts` `comments` | 抓来的原始内容（含 `*_zh` 译文列、`market`；`posts.source` scan/author 区分实时舆情/作者库，`authors.crawled_at` 作者库增量标记） |
 | 字典/抽取 | `ticker_meta` `mentions` | ticker 字典 + 帖子↔ticker 提及（含 confidence/method） |
 | AI 分析 | `item_analysis` | ★逐帖打标结果（情绪/多空/质量/主题/双语摘要/per-ticker 论据），按 item_id 持久化 |
 | 派生聚合 | `ticker_rollup` `market_mood` `trending` | 声量榜 / 市场情绪 / 异动（每次全量重算，可弃） |
@@ -160,7 +167,8 @@ crypto_us/
 
 | 命令 | 作用 |
 |---|---|
-| `make daily` | 分析过去 24h（抓取+AI 打标+聚合+翻译），直接写 `DATABASE_URL`（云端） |
+| `make daily` | 分析过去 24h（抓取+AI 打标+聚合+翻译），直接写 `DATABASE_URL`（云端）；含作者库爬取 |
+| `make crawl-authors` | 单独跑作者库：爬实力榜 Top 作者历史帖（DeepSeek 粗筛→千问深析）。需 DeepSeek key |
 | `make analyze-qwen` | 真实千问逐帖打标 + 重算聚合 |
 | `make rollup / mood / trending / narratives / brief` | 单独重算各聚合 |
 | `make cloud-init` | 一次性迁移：建表 + 上传本地源数据 + 云端重算派生表 |

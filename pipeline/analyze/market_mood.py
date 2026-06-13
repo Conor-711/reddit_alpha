@@ -31,7 +31,7 @@ def run_market_mood(market: str = "us") -> dict:
             select(ItemAnalysis.stance, ItemAnalysis.sentiment_score)
             .join(Post, Post.id == ItemAnalysis.item_id)
             .where(ItemAnalysis.item_type == "post", Post.created_utc >= cutoff,
-                   Post.market == market)
+                   Post.market == market, Post.source == "scan")
         ).all()
         total = len(rows)
         bull = sum(1 for st, _ in rows if st == "bull")
@@ -43,7 +43,7 @@ def run_market_mood(market: str = "us") -> dict:
             select(func.count()).select_from(Mention)
             .join(Post, Post.id == Mention.item_id)
             .where(Mention.item_type == "post", Mention.created_utc >= cutoff,
-                   Post.market == market)
+                   Post.market == market, Post.source == "scan")
         ).scalar_one()
 
         pct = lambda x: round(x / total * 100, 1) if total else 0.0
