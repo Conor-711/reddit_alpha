@@ -169,6 +169,16 @@ def cmd_stats(args):
                   f"多{mood.bull_pct:.0f}% / 空{mood.bear_pct:.0f}% / 中{mood.neutral_pct:.0f}%")
 
 
+def cmd_cloud_push(args):
+    from .sync import push
+    push()
+
+
+def cmd_cloud_pull(args):
+    from .sync import pull
+    pull()
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="pipeline.manage")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -196,6 +206,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("brief"); sp.add_argument("--mock", action="store_true"); sp.set_defaults(func=cmd_brief)
     sp = sub.add_parser("daily"); sp.add_argument("--rebuild", action="store_true"); sp.set_defaults(func=cmd_daily)
     sub.add_parser("stats").set_defaults(func=cmd_stats)
+    sub.add_parser("cloud-push").set_defaults(func=cmd_cloud_push)
+    sub.add_parser("cloud-pull").set_defaults(func=cmd_cloud_pull)
     return p
 
 
