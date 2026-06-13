@@ -419,7 +419,7 @@ export function getTickerDetail(symbol: string, market = "us") {
               ia.stance, ia.sentiment_score, ia.quality_score, ia.tldr, ia.tldr_zh, ia.themes, ia.tickers
          FROM posts p JOIN mentions m ON m.item_id=p.id AND m.item_type='post'
          LEFT JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
-        WHERE m.ticker = ? AND p.market=? AND p.source='scan' ORDER BY p.created_utc DESC LIMIT 24`,
+        WHERE m.ticker = ? AND p.market=? AND p.source='scan' ORDER BY p.created_utc DESC LIMIT 48`,
       ticker, market
     )
   );

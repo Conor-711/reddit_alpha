@@ -415,6 +415,7 @@ export const en: Dictionary = {
     ddSortRecent: "Recent",
     ddSortQuality: "Quality",
     ddSortScore: "Top",
+    ddMore: "Load more",
   },
   post: {
     back: "← Back to dashboard",

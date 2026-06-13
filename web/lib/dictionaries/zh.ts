@@ -416,6 +416,7 @@ export const zh = {
     ddSortRecent: "最近",
     ddSortQuality: "质量",
     ddSortScore: "热度",
+    ddMore: "加载更多",
   },
   post: {
     back: "← 返回看板",

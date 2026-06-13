@@ -221,6 +221,7 @@ export default function TickerPage({ params }: { params: { lang: string; symbol:
           hintPre={t.ddHintPre}
           hintPost={t.ddHintPost}
           labels={{ recent: t.ddSortRecent, quality: t.ddSortQuality, score: t.ddSortScore }}
+          moreLabel={t.ddMore}
           meta={d.posts.map((p) => ({ created: p.created, quality: p.quality, score: p.score }))}
         >
           {d.posts.map((p) => (
