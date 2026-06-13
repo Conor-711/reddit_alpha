@@ -25,7 +25,8 @@ ALIASES: dict[str, str] = {
     "datadog": "DDOG", "shopify": "SHOP", "spotify": "SPOT", "roblox": "RBLX",
     "rivian": "RIVN", "lucid": "LCID", "chipotle": "CMG", "starbucks": "SBUX",
     "costco": "COST", "walmart": "WMT", "berkshire": "BRK.B", "alibaba": "BABA",
-    "rocket lab": "RKLB", "soundhound": "SOUN", "draftkings": "DKNG", "celsius": "CELH",
+    "rocket lab": "RKLB", "spacex": "SPCX", "space exploration technologies": "SPCX",
+    "soundhound": "SOUN", "draftkings": "DKNG", "celsius": "CELH",
     "enphase": "ENPH", "first solar": "FSLR", "constellation energy": "CEG",
     "nuscale": "SMR", "intuitive machines": "LUNR", "archer aviation": "ACHR",
 }

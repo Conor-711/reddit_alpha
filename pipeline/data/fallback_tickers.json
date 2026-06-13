@@ -122,6 +122,7 @@
   {"ticker": "MSTR", "name": "MicroStrategy", "sector": "Technology"},
   {"ticker": "SOUN", "name": "SoundHound AI", "sector": "Technology"},
   {"ticker": "RKLB", "name": "Rocket Lab", "sector": "Industrials"},
+  {"ticker": "SPCX", "name": "SpaceX", "sector": "Industrials", "aliases": ["spacex", "space exploration technologies"]},
   {"ticker": "ACHR", "name": "Archer Aviation", "sector": "Industrials"},
   {"ticker": "IONQ", "name": "IonQ", "sector": "Technology"},
   {"ticker": "RGTI", "name": "Rigetti", "sector": "Technology"},
