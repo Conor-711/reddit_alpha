@@ -23,7 +23,7 @@ export function GoogleButton({ onError }: { onError?: (m: string) => void }) {
       type="button"
       onClick={go}
       disabled={loading}
-      className="w-full inline-flex items-center justify-center gap-2.5 rounded-lg bg-white text-[#1f1f1f] text-sm font-medium px-4 py-2.5 hover:bg-neutral-100 transition disabled:opacity-60"
+      className="w-full inline-flex h-[52px] items-center justify-center gap-3 rounded-xl bg-white text-[15px] font-semibold text-[#1f1f1f] ring-1 ring-black/10 shadow-sm transition hover:-translate-y-px hover:bg-neutral-50 hover:shadow-md active:translate-y-0 disabled:opacity-60"
     >
       <GoogleLogo />
       {loading ? t.googleRedirecting : t.googleContinue}

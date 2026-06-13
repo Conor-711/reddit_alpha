@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { GoogleButton } from "@/components/auth/GoogleButton";
+import { AppleButton } from "@/components/auth/AppleButton";
 import { EmailAuthForm } from "@/components/auth/EmailAuthForm";
 import { IconArrow } from "@/components/icons";
 import { setGuest, clearOnboarding } from "@/lib/onboarding";
@@ -44,8 +45,9 @@ export function AuthPanel() {
       {/* —— 分隔 —— */}
       <Divider>或使用账号登录</Divider>
 
-      {/* —— Google —— */}
+      {/* —— Google / Apple —— */}
       <GoogleButton onError={setOauthErr} />
+      <AppleButton onError={setOauthErr} />
       {oauthErr && <p className="text-center text-xs text-bear">{oauthErr}</p>}
 
       {/* —— 邮箱：默认折叠，点开再展开 —— */}
