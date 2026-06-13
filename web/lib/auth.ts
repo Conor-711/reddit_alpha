@@ -2,10 +2,14 @@ import type { User } from "@supabase/supabase-js";
 import { supabase, AUTH_NOT_CONFIGURED } from "./supabase";
 
 // 回调/重定向 URL（兼容 basePath 与 trailingSlash）。仅在浏览器调用。
+// 站点所有页面都在 /[lang] 下（zh/en）；auth/callback、reset-password 是静态导出页，
+// 必须带语言前缀——否则像 /auth/callback/ 这种无前缀路径在静态站上 404。
 function appRedirect(path: string): string {
   const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}${base}${path}`;
+  const seg = typeof window !== "undefined" ? window.location.pathname.split("/")[1] : "";
+  const lang = seg === "en" ? "en" : "zh"; // 取当前路径的语言前缀，默认 zh
+  return `${origin}${base}/${lang}${path}`;
 }
 
 export async function signInWithEmail(email: string, password: string) {
