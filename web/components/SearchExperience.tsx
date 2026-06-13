@@ -49,10 +49,12 @@ export function SearchExperience({
     e.preventDefault();
     const sym = v.trim().toUpperCase().replace(/^\$/, "");
     if (!sym) return;
-    if (validSet.has(sym)) {
-      void recordSearch(sym); // 记一次真实搜索（fire-and-forget）
-      track("search", { lang, ticker: sym, meta: { found: true, q: sym } });
-      router.push(withLang(lang, `${baseOf[sym] ?? tickerBase}/${encodeURIComponent(sym)}`));
+    // 先按代码精确命中；否则回退按公司名解析（NOKIA→NOK、INTEL→INTC、SPACEX→SPCX…）。
+    const target = validSet.has(sym) ? sym : resolveByName(sym, valid);
+    if (target) {
+      void recordSearch(target); // 记一次真实搜索（fire-and-forget）
+      track("search", { lang, ticker: target, meta: { found: true, q: sym } });
+      router.push(withLang(lang, `${baseOf[target] ?? tickerBase}/${encodeURIComponent(target)}`));
     } else {
       track("search", { lang, ticker: sym, meta: { found: false, q: sym } });
       setMissQ(sym); // 跳提示页
@@ -176,6 +178,24 @@ export function SearchExperience({
 
 const chipCls =
   "font-mono px-2.5 py-1 rounded-lg bg-white/[.04] text-neutral-300 hover:bg-reddit/15 hover:text-reddit ring-1 ring-inset ring-white/8 transition text-xs";
+
+// 按公司名解析到 ticker：用户输入「NOKIA / INTEL / SPACEX」等公司名而非代码时，
+// 回退到名称匹配（名称完全相同 > 名称以查询开头 > 查询是名称中的整词）。
+// valid 已按讨论量降序 → 命中即最相关；要求 ≥3 字符，避免短词乱匹配。
+function resolveByName(q: string, valid: ValidTicker[]): string | null {
+  const Q = q.trim().toUpperCase();
+  if (Q.length < 3) return null;
+  let starts: string | null = null;
+  let word: string | null = null;
+  for (const x of valid) {
+    const N = (x.name || "").toUpperCase();
+    if (!N) continue;
+    if (N === Q) return x.ticker;
+    if (!starts && N.startsWith(Q)) starts = x.ticker;
+    if (!word && N.split(/[^A-Z0-9]+/).includes(Q)) word = x.ticker;
+  }
+  return starts ?? word;
+}
 
 // 简单模糊匹配：代码精确/前缀/包含 > 公司名前缀/包含；按相关度 + 讨论量排，取前 6。
 function suggest(q: string, valid: ValidTicker[]): string[] {
