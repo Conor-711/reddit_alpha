@@ -1,6 +1,6 @@
 # 账号系统配置（Supabase Auth）
 
-redditalpha 是**静态站点**，账号系统用 **Supabase Auth**（客户端 SDK）实现，支持 **Google** 与**邮箱密码**注册/登录。本文是一次性配置步骤（约 10 分钟）。
+redditalpha 是**静态站点**，账号系统用 **Supabase Auth**（客户端 SDK）实现，支持 **Google**、**Apple** 与**邮箱密码**注册/登录。登录页主推 Google（大按钮）+ Apple，邮箱入口默认折叠成小按钮、点开才展开。本文是一次性配置步骤（约 10 分钟）。
 
 > 不配也能跑：缺少环境变量时，登录/注册页会提示"未配置"，站点其余部分照常工作。
 
@@ -53,6 +53,19 @@ redditalpha 是**静态站点**，账号系统用 **Supabase Auth**（客户端 
 ### 3b. 填回 Supabase
 **Authentication → Providers → Google**：开启，粘贴 Client ID 与 Client Secret，保存。
 
+## 3.5 配置 Apple 登录（需 Apple Developer 付费账号）
+> Apple 比 Google 麻烦些，且要 99 美元/年的开发者账号。**没有就先只用 Google**——前端 Apple 按钮在 provider 未开时点了会提示登录失败，不影响其它登录方式。
+
+### 3.5a Apple Developer 创建凭证（https://developer.apple.com）
+1. **Certificates, IDs & Profiles → Identifiers**：
+   - 建一个 **App ID**（或用已有的）。
+   - 再建一个 **Services ID**（这就是 OAuth 的 client_id，形如 `com.yourname.web`）。编辑它，勾选 **Sign in with Apple**，配置：
+     - **Domains**：`<你的project-ref>.supabase.co`
+     - **Return URLs**：`https://<你的project-ref>.supabase.co/auth/v1/callback`
+2. **Keys → 新建 Key**，勾选 **Sign in with Apple**，下载 `.p8` 私钥（**只能下一次**），记下 **Key ID** 和你的 **Team ID**。
+### 3.5b 填回 Supabase
+**Authentication → Providers → Apple**：开启，填 **Services ID**（client_id）、**Team ID**、**Key ID**、`.p8` 私钥内容。保存。
+
 ## 4. 设置站点与回调白名单
 **Authentication → URL Configuration**：
 - **Site URL**：你的站点根地址。
@@ -76,7 +89,7 @@ redditalpha 是**静态站点**，账号系统用 **Supabase Auth**（客户端 
   > 环境变量在**构建期**注入前端，改了 env 必须重新 build。
 
 ## 功能清单
-- `/login`、`/signup`：Google 一键 + 邮箱密码；`/forgot-password`、`/reset-password`：邮件重置；`/account`：资料/改密/登出；`/auth/callback`：OAuth 回调。
+- `/login`、`/signup`：Google / Apple 一键（主推）+ 邮箱密码（折叠入口）；`/forgot-password`、`/reset-password`：邮件重置；`/account`：资料/改密/登出；`/auth/callback`：OAuth 回调。
 - 顶栏用户菜单（头像/邮箱/登出），全局会话由 `AuthProvider` 维护。
 - `/me`（个人主页·私密）：帖子/评论收藏、社区/标的/作者追踪；全站卡片上的书签/「追踪」按钮由 `FavoritesProvider` + `SaveButton` 驱动。
   数据存 Supabase 的 `user_collections`（RLS 仅本人可读写）。**需先在 SQL Editor 执行迁移

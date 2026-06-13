@@ -54,6 +54,15 @@ export async function signInWithGoogle() {
   if (error) throw error; // 成功则浏览器跳转到 Google
 }
 
+export async function signInWithApple() {
+  if (!supabase) throw new Error(AUTH_NOT_CONFIGURED);
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "apple",
+    options: { redirectTo: appRedirect("/auth/callback/") },
+  });
+  if (error) throw error; // 成功则浏览器跳转到 Apple
+}
+
 export async function signOut() {
   if (supabase) await supabase.auth.signOut();
 }
