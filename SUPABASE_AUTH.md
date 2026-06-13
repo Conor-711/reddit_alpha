@@ -20,10 +20,24 @@ redditalpha 是**静态站点**，账号系统用 **Supabase Auth**（客户端 
    ```
    > anon key 是**公开可暴露**的前端 key，放前端是安全的。
 
-## 2. 开启邮箱登录
-**Authentication → Providers → Email**：默认已开。
-- 想免邮箱验证、注册即登录：关闭 **Confirm email**（开发期方便）。
-- 保持开启则用户注册后需点确认邮件里的链接。
+## 2. 开启邮箱登录 + 验证码注册（OTP，非链接）
+**Authentication → Providers → Email**：默认已开。**保持 Confirm email 开启**。
+
+前端注册已改为「填邮箱+密码 → 邮件收到 6 位验证码 → 输入验证码」两步（见
+`web/components/auth/EmailAuthForm.tsx`，用 `supabase.auth.verifyOtp({type:'signup'})` 校验）。
+**要让邮件里出现验证码（而不是链接），必须改邮件模板**：
+
+**Authentication → Email Templates → Confirm signup**，把正文改成包含 `{{ .Token }}`，例如：
+```html
+<h2>确认注册 redditalpha</h2>
+<p>你的验证码：</p>
+<p style="font-size:28px;font-weight:bold;letter-spacing:6px">{{ .Token }}</p>
+<p>回到注册页输入此验证码完成注册（1 小时内有效）。</p>
+```
+> 不改模板：邮件仍是旧的确认**链接**，注册页等不到验证码。
+> 想完全免验证、注册即登录：关闭 **Confirm email**（则不发验证码、`signUp` 直接返回 session）。
+
+（登录仍是邮箱+密码，不变；验证码只用于注册确认。）
 
 ## 3. 配置 Google 登录
 ### 3a. Google Cloud 创建 OAuth 凭证
