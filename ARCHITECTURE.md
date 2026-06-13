@@ -2,7 +2,7 @@
 
 > **维护约定**：本文件是项目的「活地图」。**每次对项目结构或功能有实质改动后，必须同步更新本文件对应章节**
 > （新增/删除模块、改数据流、改命令、改部署方式、改 schema 等）。详见根目录 `CLAUDE.md`。
-> 最近更新：2026-06-12。
+> 最近更新：2026-06-13。
 
 ---
 
@@ -95,7 +95,7 @@ crypto_us/
 │   │   ├── trending.py        #   异动（z-score / spike）
 │   │   ├── narratives.py      #   叙事聚类（deepseek 语义聚类，失败回退主题分组）
 │   │   ├── brief.py           #   每日简报（deepseek 润色）
-│   │   └── translate.py       #   翻译成中文 *_zh 列（增量、幂等）
+│   │   └── translate.py       #   翻译成中文 *_zh 列（增量、幂等；走 SQLAlchemy/DATABASE_URL，云端本地通用）
 │   └── data/                  #   随仓库的字典/样本（ticker_stoplist.txt, cn_hk_tickers.json, subreddits.yml…）
 │
 ├── web/                       # ③ Next.js 14 静态站
@@ -187,5 +187,6 @@ crypto_us/
 - **双语字典**：`dictionaries/zh.ts` 是源，`en.ts` 必须镜像完全相同的 key。
 - **密钥不入库**：`.env` / `web/.env.local` 已 gitignore；含 `QWEN_API_KEY`/`DEEPSEEK_API_KEY`/`DATABASE_URL`(含密码)/Supabase anon key 等，切勿提交或泄露。
 - **回到纯本地**：`.env` 的 `DATABASE_URL` 改回 `sqlite:///./data/dev.db` 即可。
+- **管线所有步骤必须走 SQLAlchemy（`common/db.py` 的 engine），不要裸 `sqlite3.connect`**：否则 `DATABASE_URL` 指向云端时会把结果写进本地文件、云端拿不到。`translate.py` 曾因此漏译（已修）；`format_posts.py` / `seed_demo_zh.py` 仍是裸 sqlite3，仅本地/ demo 用，勿放进 daily 云端流程。
 - **管理员看板**（`/insights`）：前端只是 UX 门槛，真正鉴权在 Supabase 端（`is_admin()` 校验 JWT 邮箱）。
 - **待办（省 token）**：千问/DeepSeek 的系统提示词每次逐帖重发，未确认是否走缓存计费；可启用上下文缓存。
