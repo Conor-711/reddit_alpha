@@ -2,7 +2,8 @@
 
 import { LocaleLink } from "./i18n/LocaleLink";
 import { useLocale } from "./i18n/LocaleProvider";
-import { SentPill, TickerChip, ThemeTag, SubredditChip, Avatar } from "./ui";
+import { SentPill, TickerChip, ThemeTag, SubredditChip } from "./ui";
+import { AuthorLink } from "./author/AuthorLink";
 import { IconUpvote, IconDownvote, IconComment } from "./icons";
 import { timeAgo, fmtCompact } from "@/lib/format";
 import type { FeedRow } from "@/lib/queries";
@@ -29,7 +30,7 @@ export function FeedCard({ p, tickerBase = "/ticker" }: { p: FeedRow; tickerBase
           <SubredditChip name={p.subreddit} />
           {p.author && (
             <span className="inline-flex items-center gap-1 truncate">
-              · <Avatar name={p.author} size={15} /> u/{p.author}
+              · <AuthorLink name={p.author} size={15} />
             </span>
           )}
           <span>· {timeAgo(p.created, lang)}</span>

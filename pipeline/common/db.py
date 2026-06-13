@@ -62,6 +62,8 @@ _ADD_COLUMNS = [
     ("subreddits", "market", "VARCHAR(8) DEFAULT 'us'"),
     ("subreddits", "tracked", "BOOLEAN DEFAULT 1"),
     ("posts", "market", "VARCHAR(8) DEFAULT 'us'"),
+    ("posts", "source", "VARCHAR(8) DEFAULT 'scan'"),  # scan=板块扫描 / author=作者库历史爬取
+    ("authors", "crawled_at", "DATETIME"),  # nullable：作者库上次爬取时间
     ("ticker_meta", "market", "VARCHAR(8)"),  # nullable：仅标记策划的中概/港股宇宙
 ]
 # 这些派生表新增了 market 列：缺列即视为旧结构 → 整表重建。

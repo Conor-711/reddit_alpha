@@ -33,8 +33,8 @@ export function getMeta(market = "us") {
     market
   );
   const counts = get<{ posts: number; mentions: number; tickers: number }>(
-    `SELECT (SELECT COUNT(*) FROM posts WHERE market=?) AS posts,
-            (SELECT COUNT(*) FROM mentions mm JOIN posts p ON p.id=mm.item_id WHERE p.market=?) AS mentions,
+    `SELECT (SELECT COUNT(*) FROM posts WHERE market=? AND source='scan') AS posts,
+            (SELECT COUNT(*) FROM mentions mm JOIN posts p ON p.id=mm.item_id WHERE p.market=? AND p.source='scan') AS mentions,
             (SELECT COUNT(DISTINCT ticker) FROM ticker_rollup WHERE bucket='window' AND market=?) AS tickers`,
     market, market, market
   );
@@ -149,7 +149,8 @@ function mapFeed(rows: any[]): FeedRow[] {
 
 export function getFeed(opts: { limit?: number; ticker?: string; subreddit?: string; stance?: string; market?: string } = {}): FeedRow[] {
   const { limit = 30, ticker, subreddit, stance, market = "us" } = opts;
-  const where: string[] = ["ia.item_type='post'", "p.market = ?"];
+  // p.source='scan'：作者库历史帖（source='author'）只进作者页，不进实时舆情 feed。
+  const where: string[] = ["ia.item_type='post'", "p.market = ?", "p.source='scan'"];
   const params: unknown[] = [market];
   if (subreddit) { where.push("p.subreddit_id = ?"); params.push(subreddit); }
   if (stance) { where.push("ia.stance = ?"); params.push(stance); }
@@ -188,7 +189,7 @@ export function getTodaysAlpha(limit = 3, market = "us"): AlphaRow[] {
             ia.stance, ia.sentiment_score, ia.quality_score, ia.tldr, ia.tldr_zh, ia.themes, ia.tickers,
             ia.bull_points, ia.bear_points, ia.bull_points_zh, ia.bear_points_zh
        FROM posts p JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
-      WHERE p.market = ?
+      WHERE p.market = ? AND p.source='scan'
         AND p.created_utc >= datetime((SELECT MAX(created_utc) FROM posts WHERE market=?), '-1 day')
         AND ia.tldr IS NOT NULL AND ia.tldr <> ''
         AND json_array_length(COALESCE(NULLIF(ia.tickers,''),'[]')) > 0
@@ -247,7 +248,7 @@ export function getSearchableTickers(market = "us"): SearchableTicker[] {
   return all<SearchableTicker>(
     `SELECT m.ticker, COALESCE(tm.company_name,'') AS name, COUNT(DISTINCT m.item_id) AS posts
        FROM mentions m
-       JOIN posts p ON p.id = m.item_id AND p.market = ?
+       JOIN posts p ON p.id = m.item_id AND p.market = ? AND p.source='scan'
        LEFT JOIN ticker_meta tm ON tm.ticker = m.ticker
       WHERE m.item_type='post'
       GROUP BY m.ticker
@@ -264,7 +265,7 @@ export function getSearchHeat(limit = 10, market = "us"): HeatRow[] {
             COUNT(DISTINCT m.item_id) AS mentions,
             COALESCE(AVG(ia.sentiment_score), 0) AS sentiment
        FROM mentions m
-       JOIN posts p ON p.id = m.item_id AND p.market = ?
+       JOIN posts p ON p.id = m.item_id AND p.market = ? AND p.source='scan'
        LEFT JOIN ticker_meta tm ON tm.ticker = m.ticker
        LEFT JOIN item_analysis ia ON ia.item_id = m.item_id AND ia.item_type='post'
       WHERE m.item_type='post'
@@ -407,7 +408,7 @@ export function getTickerDetail(symbol: string, market = "us") {
   );
   const bySub = all<{ subreddit: string; n: number }>(
     `SELECT m.subreddit_id AS subreddit, COUNT(*) AS n FROM mentions m
-       JOIN posts p ON p.id=m.item_id AND p.market=?
+       JOIN posts p ON p.id=m.item_id AND p.market=? AND p.source='scan'
       WHERE m.item_type='post' AND m.ticker = ? GROUP BY m.subreddit_id ORDER BY n DESC`,
     market, ticker
   );
@@ -418,7 +419,7 @@ export function getTickerDetail(symbol: string, market = "us") {
               ia.stance, ia.sentiment_score, ia.quality_score, ia.tldr, ia.tldr_zh, ia.themes, ia.tickers
          FROM posts p JOIN mentions m ON m.item_id=p.id AND m.item_type='post'
          LEFT JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
-        WHERE m.ticker = ? AND p.market=? ORDER BY p.score DESC LIMIT 12`,
+        WHERE m.ticker = ? AND p.market=? AND p.source='scan' ORDER BY p.score DESC LIMIT 12`,
       ticker, market
     )
   );
@@ -462,7 +463,7 @@ export function getTickerDetail(symbol: string, market = "us") {
             AVG(ia.quality_score) AS quality, AVG(ia.sentiment_score) AS sentiment
        FROM posts p JOIN mentions m ON m.item_id=p.id AND m.item_type='post' AND m.ticker = ?
        LEFT JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
-      WHERE p.author_id IS NOT NULL AND p.market = ?
+      WHERE p.author_id IS NOT NULL AND p.market = ? AND p.source='scan'
       GROUP BY p.author_id
       ORDER BY AVG(ia.quality_score) DESC, SUM(p.score) DESC
       LIMIT 6`,
@@ -517,7 +518,13 @@ export interface AuthorRow {
   tier: number; // 0..3
 }
 
-export function getLeaderboard(limit = 24): AuthorRow[] {
+// 全体作者打分（作者维度——含作者库帖 source='author'，不按 source 过滤）。
+// 构建期 memo 一次：榜单页 + 2336 个作者页 O(1) 复用同一份归一化结果。
+let _scoredCache: AuthorRow[] | null = null;
+let _scoredMap: Map<string, AuthorRow> | null = null;
+
+function allAuthorsScored(): AuthorRow[] {
+  if (_scoredCache) return _scoredCache;
   const agg = all<{
     author: string; posts: number; upvotes: number; comments: number;
     quality: number | null; sentiment: number | null;
@@ -537,7 +544,11 @@ export function getLeaderboard(limit = 24): AuthorRow[] {
       WHERE p.author_id IS NOT NULL
       GROUP BY p.author_id`
   );
-  if (!agg.length) return [];
+  if (!agg.length) {
+    _scoredCache = [];
+    _scoredMap = new Map();
+    return _scoredCache;
+  }
 
   // 每位作者的标的覆盖（distinct + top）
   const tk = all<{ author: string; ticker: string; n: number }>(
@@ -582,7 +593,132 @@ export function getLeaderboard(limit = 24): AuthorRow[] {
     };
   });
   scored.sort((x, y) => y.score - x.score || y.upvotes - x.upvotes);
-  return scored.slice(0, limit);
+  _scoredCache = scored;
+  _scoredMap = new Map(scored.map((r) => [r.author, r]));
+  return _scoredCache;
+}
+
+export function getLeaderboard(limit = 24): AuthorRow[] {
+  return allAuthorsScored().slice(0, limit);
+}
+
+// ----------------------------- 作者页（聚合分析） -----------------------------
+export interface AuthorTickerStance {
+  ticker: string; name: string; posts: number; bull: number; bear: number; sentiment: number;
+}
+
+// 所有「有帖」的作者名 → generateStaticParams（保证任意从帖/榜单点进来的作者都有页、不 404）。
+export function getAuthorNames(): string[] {
+  return all<{ author: string }>(
+    `SELECT DISTINCT author_id AS author FROM posts WHERE author_id IS NOT NULL`
+  ).map((r) => r.author);
+}
+
+export function getAuthorDetail(name: string) {
+  const row = allAuthorsScored() && _scoredMap ? _scoredMap.get(name) : undefined; // 实力分/四维分量（可能 undefined）
+  const profile = get<{
+    comment_karma: number; link_karma: number; post_count: number; influence_score: number;
+    created_utc: string | null; crawled_at: string | null; first_seen: string | null; last_seen: string | null;
+  }>(
+    `SELECT comment_karma, link_karma, post_count, influence_score, created_utc, crawled_at, first_seen, last_seen
+       FROM authors WHERE id = ?`,
+    name
+  );
+  // 基础数据：聚合该作者全部帖（含作者库 source='author'）
+  const agg = get<{
+    posts: number; upvotes: number; comments: number; tickers: number; quality: number | null;
+    sentiment: number | null; bull: number; bear: number; neutral: number;
+    first: string | null; last: string | null; lib: number;
+  }>(
+    `SELECT COUNT(*) AS posts, COALESCE(SUM(p.score),0) AS upvotes, COALESCE(SUM(p.num_comments),0) AS comments,
+            AVG(ia.quality_score) AS quality, AVG(ia.sentiment_score) AS sentiment,
+            SUM(CASE WHEN ia.stance='bull' THEN 1 ELSE 0 END) AS bull,
+            SUM(CASE WHEN ia.stance='bear' THEN 1 ELSE 0 END) AS bear,
+            SUM(CASE WHEN ia.stance='neutral' THEN 1 ELSE 0 END) AS neutral,
+            MIN(p.created_utc) AS first, MAX(p.created_utc) AS last,
+            SUM(CASE WHEN p.source='author' THEN 1 ELSE 0 END) AS lib,
+            (SELECT COUNT(DISTINCT ticker) FROM mentions WHERE item_type='post' AND author_id = ?) AS tickers
+       FROM posts p LEFT JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
+      WHERE p.author_id = ?`,
+    name, name
+  );
+  // 代表作：质量 × 热度 排序（含作者库帖）
+  const posts = mapFeed(
+    all(
+      `SELECT p.id, p.title, p.title_zh, p.selftext, p.permalink, p.subreddit_id, p.flair, p.score,
+              p.num_comments, p.created_utc, p.author_id,
+              ia.stance, ia.sentiment_score, ia.quality_score, ia.tldr, ia.tldr_zh, ia.themes, ia.tickers
+         FROM posts p JOIN item_analysis ia ON ia.item_id=p.id AND ia.item_type='post'
+        WHERE p.author_id = ?
+        ORDER BY (COALESCE(ia.quality_score,0) * (1 + p.score)) DESC, p.score DESC LIMIT 12`,
+      name
+    )
+  );
+  // 看好 / 看空标的：把作者每个 ticker 的帖子立场聚合
+  const tkRows = all<{ ticker: string; name: string; n: number; bull: number; bear: number; sentiment: number | null }>(
+    `SELECT m.ticker, COALESCE(tm.company_name,'') AS name, COUNT(*) AS n,
+            SUM(CASE WHEN ia.stance='bull' THEN 1 ELSE 0 END) AS bull,
+            SUM(CASE WHEN ia.stance='bear' THEN 1 ELSE 0 END) AS bear,
+            AVG(ia.sentiment_score) AS sentiment
+       FROM mentions m JOIN posts p ON p.id=m.item_id AND p.author_id = ?
+       LEFT JOIN item_analysis ia ON ia.item_id=m.item_id AND ia.item_type='post'
+       LEFT JOIN ticker_meta tm ON tm.ticker=m.ticker
+      WHERE m.item_type='post'
+      GROUP BY m.ticker`,
+    name
+  );
+  const tickers: AuthorTickerStance[] = tkRows.map((t) => ({
+    ticker: t.ticker, name: t.name, posts: t.n, bull: t.bull, bear: t.bear, sentiment: t.sentiment ?? 0,
+  }));
+  const bullish = tickers
+    .filter((t) => t.bull > t.bear || (t.bull === t.bear && t.sentiment > 0.12))
+    .sort((a, b) => b.bull - b.bear - (a.bull - a.bear) || b.posts - a.posts)
+    .slice(0, 8);
+  const bearish = tickers
+    .filter((t) => t.bear > t.bull || (t.bull === t.bear && t.sentiment < -0.12))
+    .sort((a, b) => b.bear - b.bull - (a.bear - a.bull) || b.posts - a.posts)
+    .slice(0, 8);
+  // 常驻社区
+  const communities = all<{ subreddit: string; n: number }>(
+    `SELECT subreddit_id AS subreddit, COUNT(*) AS n FROM posts WHERE author_id = ?
+      GROUP BY subreddit_id ORDER BY n DESC LIMIT 6`,
+    name
+  );
+  // 主题（从代表作聚合）
+  const themeCount = new Map<string, number>();
+  for (const p of posts) for (const t of p.themes) themeCount.set(t, (themeCount.get(t) || 0) + 1);
+  const themes = [...themeCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([n, c]) => ({ name: n, count: c }));
+
+  return {
+    name,
+    profile,
+    stats: {
+      posts: agg?.posts ?? 0, upvotes: agg?.upvotes ?? 0, comments: agg?.comments ?? 0,
+      tickers: agg?.tickers ?? 0, quality: agg?.quality ?? 0, sentiment: agg?.sentiment ?? 0,
+      bull: agg?.bull ?? 0, bear: agg?.bear ?? 0, neutral: agg?.neutral ?? 0,
+      first: agg?.first ?? null, last: agg?.last ?? null, library: agg?.lib ?? 0,
+      karma: (profile?.comment_karma ?? 0) + (profile?.link_karma ?? 0),
+      score: row?.score ?? null, tier: row?.tier ?? 0,
+      cQuality: row?.cQuality ?? 0, cInfluence: row?.cInfluence ?? 0,
+      cConviction: row?.cConviction ?? 0, cOutput: row?.cOutput ?? 0,
+    },
+    posts,
+    bullish,
+    bearish,
+    communities,
+    themes,
+  };
+}
+
+// 给定一批作者名，返回其中「有作者页」（即有帖）的集合 → 评论区据此决定是否给作者加链接。
+export function linkableAuthors(names: string[]): string[] {
+  const uniq = [...new Set(names.filter(Boolean))];
+  if (!uniq.length) return [];
+  const ph = uniq.map(() => "?").join(",");
+  return all<{ a: string }>(
+    `SELECT DISTINCT author_id AS a FROM posts WHERE author_id IN (${ph})`,
+    ...uniq
+  ).map((r) => r.a);
 }
 
 export function getSubreddits() {

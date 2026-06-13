@@ -1,6 +1,6 @@
 import { Panel, Avatar, MiniBar, TickerChip } from "@/components/ui";
 import { LocaleLink } from "@/components/i18n/LocaleLink";
-import { IconUpvote, IconComment } from "@/components/icons";
+import { IconUpvote, IconComment, IconArrow } from "@/components/icons";
 import { fmtInt, fmtCompact } from "@/lib/format";
 import { getLeaderboard, type AuthorRow } from "@/lib/queries";
 import { isLocale, defaultLocale, type Locale } from "@/lib/i18n";
@@ -59,10 +59,17 @@ export default function LeaderboardPage({ params }: { params: { lang: string } }
         {top3.map((r, i) => (
           <article
             key={r.author}
-            className={`panel rounded-2xl p-5 flex flex-col panel-hover ${
+            className={`relative group cursor-pointer panel rounded-2xl p-5 flex flex-col panel-hover ${
               i === 0 ? "ring-1 ring-inset ring-gold/40" : ""
             }`}
           >
+            {/* 整卡可点 → 作者主页（拉伸式链接，标的 chip 用 z-10 保持单独可点） */}
+            <LocaleLink
+              href={`/author/${encodeURIComponent(r.author)}`}
+              aria-label={zh ? `查看 u/${r.author} 主页` : `View u/${r.author}`}
+              className="absolute inset-0 z-0 rounded-2xl"
+            />
+
             <div className="flex items-center justify-between">
               <span className={`grid place-items-center w-7 h-7 rounded-full text-[12px] font-extrabold metal-fill ${i === 0 ? "m-gold" : i === 1 ? "m-silver" : "m-bronze"}`}>
                 {i + 1}
@@ -73,9 +80,14 @@ export default function LeaderboardPage({ params }: { params: { lang: string } }
             </div>
 
             <div className="mt-3 flex items-center gap-3">
-              <Avatar name={r.author} size={48} />
+              <span className="shrink-0 inline-flex rounded-full ring-2 ring-transparent group-hover:ring-reddit/50 transition">
+                <Avatar name={r.author} size={48} />
+              </span>
               <div className="min-w-0">
-                <div className="font-display font-bold text-cream truncate">u/{r.author}</div>
+                <span className="flex items-center gap-1 font-display font-bold text-cream group-hover:text-reddit transition">
+                  <span className="truncate">u/{r.author}</span>
+                  <IconArrow className="w-3.5 h-3.5 shrink-0 text-neutral-500 group-hover:text-reddit group-hover:translate-x-0.5 transition" />
+                </span>
                 <div className="flex items-baseline gap-1.5">
                   <span className={`font-display font-extrabold text-[28px] leading-none tabular ${TIERS[r.tier].num}`}>{r.score}</span>
                   <span className="text-[11px] text-neutral-500">{zh ? "实力分" : "Alpha"}</span>
@@ -94,18 +106,11 @@ export default function LeaderboardPage({ params }: { params: { lang: string } }
               <span>{r.tickers} {zh ? "标的" : "tickers"}</span>
             </div>
 
-            {(r.topTickers.length > 0 || r.topPostId) && (
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                  {r.topTickers.slice(0, 3).map((tk) => (
-                    <TickerChip key={tk} ticker={tk} size="xs" />
-                  ))}
-                </div>
-                {r.topPostId && (
-                  <LocaleLink href={`/post/${r.topPostId}`} className="text-[11px] text-reddit font-medium hover:underline shrink-0">
-                    {zh ? "看代表作 →" : "Top DD →"}
-                  </LocaleLink>
-                )}
+            {r.topTickers.length > 0 && (
+              <div className="relative z-10 mt-3 flex flex-wrap items-center gap-1.5">
+                {r.topTickers.slice(0, 3).map((tk) => (
+                  <TickerChip key={tk} ticker={tk} size="xs" />
+                ))}
               </div>
             )}
           </article>
@@ -126,18 +131,23 @@ export default function LeaderboardPage({ params }: { params: { lang: string } }
           {rest.map((r, i) => (
             <div
               key={r.author}
-              className="grid grid-cols-[28px_1fr_auto] sm:grid-cols-[40px_1fr_120px_1.3fr_150px_88px] items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[.03] transition"
+              className="relative group grid grid-cols-[28px_1fr_auto] sm:grid-cols-[40px_1fr_120px_1.3fr_150px_88px] items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer hover:bg-white/[.03] transition"
             >
+              <LocaleLink
+                href={`/author/${encodeURIComponent(r.author)}`}
+                aria-label={zh ? `查看 u/${r.author} 主页` : `View u/${r.author}`}
+                className="absolute inset-0 z-0 rounded-lg"
+              />
               <span className="text-right text-xs text-neutral-600 tabular">{i + 4}</span>
               <span className="flex items-center gap-2 min-w-0">
-                <Avatar name={r.author} size={26} />
+                <span className="shrink-0 inline-flex rounded-full ring-2 ring-transparent group-hover:ring-reddit/50 transition">
+                  <Avatar name={r.author} size={26} />
+                </span>
                 <span className="min-w-0">
-                  <LocaleLink
-                    href={r.topPostId ? `/post/${r.topPostId}` : "/leaderboard"}
-                    className="block font-medium text-cream truncate hover:text-reddit transition"
-                  >
-                    u/{r.author}
-                  </LocaleLink>
+                  <span className="flex items-center gap-1 font-medium text-cream group-hover:text-reddit transition">
+                    <span className="truncate">u/{r.author}</span>
+                    <IconArrow className="w-3 h-3 shrink-0 text-neutral-500 opacity-0 group-hover:opacity-100 group-hover:text-reddit transition" />
+                  </span>
                   <span className={`text-[10px] ${TIERS[r.tier].num}`}>{zh ? TIERS[r.tier].zh : TIERS[r.tier].en}</span>
                 </span>
               </span>
@@ -147,7 +157,7 @@ export default function LeaderboardPage({ params }: { params: { lang: string } }
               <span className="hidden sm:block">
                 <Bars r={r} zh={zh} compact />
               </span>
-              <span className="hidden sm:flex flex-wrap items-center gap-1">
+              <span className="relative z-10 hidden sm:flex flex-wrap items-center gap-1">
                 {r.topTickers.slice(0, 3).map((tk) => (
                   <TickerChip key={tk} ticker={tk} size="xs" />
                 ))}

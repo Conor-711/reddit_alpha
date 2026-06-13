@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar } from "./ui";
+import { AuthorLink } from "./author/AuthorLink";
 import { MarkdownLite } from "./MarkdownLite";
 import { IconUpvote } from "./icons";
 import { SnooMascot } from "./reddit";
@@ -18,15 +19,18 @@ export function Comments({
   postId,
   postTitle = "",
   postTitleZh = "",
+  linkable = [],
 }: {
   comments: CommentRow[];
   showZh?: boolean;
   postId?: string;
   postTitle?: string;
   postTitleZh?: string;
+  linkable?: string[]; // 这些评论作者「本身也发过帖」→ 有作者页，可加链接
 }) {
   const { dict } = useLocale();
   const ctx = postId ? { postId, postTitle, postTitleZh } : null;
+  const linkSet = new Set(linkable);
   if (!comments.length) {
     return (
       <div className="panel rounded-xl p-6 flex flex-col items-center text-center gap-2.5">
@@ -55,7 +59,7 @@ export function Comments({
   return (
     <div className="space-y-3">
       {roots.map((c) => (
-        <CommentNode key={c.id} c={c} tree={tree} depth={0} showZh={showZh} ctx={ctx} />
+        <CommentNode key={c.id} c={c} tree={tree} depth={0} showZh={showZh} ctx={ctx} linkSet={linkSet} />
       ))}
     </div>
   );
@@ -67,12 +71,14 @@ function CommentNode({
   depth,
   showZh,
   ctx,
+  linkSet,
 }: {
   c: CommentRow;
   tree: Map<string, CommentRow[]>;
   depth: number;
   showZh: boolean;
   ctx: { postId: string; postTitle: string; postTitleZh: string } | null;
+  linkSet: Set<string>;
 }) {
   const { lang, dict } = useLocale();
   const kids = tree.get(c.id) ?? [];
@@ -82,8 +88,14 @@ function CommentNode({
     <div>
       <div className={`rounded-xl bg-white/[.02] ring-1 ring-inset p-3.5 ${top ? "ring-reddit/25" : "ring-white/[.06]"}`}>
         <div className="flex items-center gap-2 text-xs text-neutral-500">
-          <Avatar name={c.author || "?"} size={18} />
-          <span className="text-neutral-300 font-medium">u/{c.author || "[deleted]"}</span>
+          {c.author && linkSet.has(c.author) ? (
+            <AuthorLink name={c.author} size={18} className="text-neutral-300 font-medium" />
+          ) : (
+            <>
+              <Avatar name={c.author || "?"} size={18} />
+              <span className="text-neutral-300 font-medium">u/{c.author || "[deleted]"}</span>
+            </>
+          )}
           <span className="inline-flex items-center gap-0.5 text-reddit font-medium">
             <IconUpvote className="w-3 h-3" /> {fmtCompact(c.score)}
           </span>
@@ -102,7 +114,7 @@ function CommentNode({
       {kids.length > 0 && depth < 3 && (
         <div className="mt-3 ml-3 sm:ml-5 pl-3 border-l border-line space-y-3">
           {kids.map((k) => (
-            <CommentNode key={k.id} c={k} tree={tree} depth={depth + 1} showZh={showZh} ctx={ctx} />
+            <CommentNode key={k.id} c={k} tree={tree} depth={depth + 1} showZh={showZh} ctx={ctx} linkSet={linkSet} />
           ))}
         </div>
       )}

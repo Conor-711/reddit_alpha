@@ -50,6 +50,7 @@ def run_daily(rebuild: bool = False) -> None:
     from .analyze.rollups import run_rollups
     from .analyze.trending import run_trending
     from .ingest.arctic_scrape import scrape, scrape_china_filtered, scrape_comments
+    from .ingest.author_crawl import crawl_top_authors
     from .ingest.sample_loader import load_sample
 
     started = dt.datetime.now()
@@ -78,6 +79,15 @@ def run_daily(rebuild: bool = False) -> None:
         _safe("analyze", run_analyze, qwen=True, workers=10)
     else:
         _safe("analyze", run_analyze, mock=True)
+    # 3.2) 作者库：爬「实力榜」Top 作者历史帖（两级漏斗：DeepSeek 粗筛 → 千问深析）。
+    #      放在主分析之后（作者才可排名），过线帖再走一次增量分析（item_analyze 跳过已分析）。
+    #      需 DeepSeek（粗筛闸）；作者库帖 source='author'，被所有实时聚合排除，只进作者页。
+    if settings.has_deepseek:
+        _safe("crawl-authors", crawl_top_authors, limit=50)
+        if use_qwen:
+            _safe("analyze-authors", run_analyze, qwen=True, workers=10)
+        else:
+            _safe("analyze-authors", run_analyze, mock=True)
     # 3.5) 抓「展示优先级最高」帖的评论快照（移到 analyze 之后，按质量分选帖）。
     #      Arctic 发帖瞬间存档 → num_comments≈0 不可信，故不按它过滤（min_comments=0）。
     _safe("scrape-comments", scrape_comments, top_n=700, per_post=15, min_comments=0)

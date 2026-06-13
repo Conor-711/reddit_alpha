@@ -28,7 +28,7 @@ def _load_window_posts(s, cutoff, market):
                ItemAnalysis.sentiment_score, ItemAnalysis.stance, ItemAnalysis.themes,
                ItemAnalysis.tickers, ItemAnalysis.quality_score)
         .join(ItemAnalysis, and_(ItemAnalysis.item_id == Post.id, ItemAnalysis.item_type == "post"))
-        .where(Post.created_utc >= cutoff, Post.market == market)
+        .where(Post.created_utc >= cutoff, Post.market == market, Post.source == "scan")
     ).all()
     return rows
 
