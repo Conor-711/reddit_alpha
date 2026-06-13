@@ -29,6 +29,24 @@ def _int(name: str, default: int) -> int:
         return default
 
 
+def normalize_db_url(url: str) -> str:
+    """规范化数据库连接串，让 Supabase 的连接串可直接用：
+    - `postgres://` / `postgresql://`（Supabase/Heroku 风格）→ SQLAlchemy + psycopg(3) 用的
+      `postgresql+psycopg://`；
+    - Postgres 连接自动强制 SSL（Supabase 必须）。
+    SQLite 原样返回。这样用户把 Supabase 控制台复制的串直接粘进 DATABASE_URL 即可，无需手改。
+    """
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    if url.startswith("postgresql+psycopg://") and "sslmode=" not in url:
+        url += ("&" if "?" in url else "?") + "sslmode=require"
+    return url
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str = os.environ.get("DATABASE_URL", "sqlite:///./data/dev.db")

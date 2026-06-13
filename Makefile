@@ -186,5 +186,30 @@ serve:
 	@echo "🌐 本地部署： http://localhost:8080   (Ctrl+C 退出)"
 	@python3 -m http.server 8080 --bind 0.0.0.0 --directory web/out
 
+# ---------- 云端数据库（Supabase = 数据的家）----------
+# 前提：.env 里 DATABASE_URL 已设为 Supabase 的 Postgres 连接串（见 CLOUD_DB.md）。
+# 一次性迁移：在云端建表 + 上传本地 dev.db 的源数据 + 在云端重算派生表（榜单/情绪/异动/叙事/简报）。
+cloud-init:
+	$(MANAGE) cloud-push
+	$(MANAGE) rollup --market all
+	$(MANAGE) mood --market all
+	$(MANAGE) trending --market all
+	$(MANAGE) narratives --mock --market all
+	$(MANAGE) brief --mock
+	@echo "" && echo "✅ 云端初始化完成：Supabase 已成为数据的家。日常用 make daily，出站用 make site-cloud。"
+
+# 把本地 dev.db 的源数据（帖子/评论/作者/AI 分析/提及/字典）上传到云端（增量、可重复跑）。
+cloud-push:
+	$(MANAGE) cloud-push
+
+# 从云端拉取最新数据，全新覆盖本地 data/dev.db 快照（供构建读取）。
+cloud-pull:
+	$(MANAGE) cloud-pull
+
+# 从云端拉快照后再构建静态站点（web/out）。部署前用这个，保证页面是云端最新数据。
+site-cloud: cloud-pull
+	cd web && npm run build
+	@echo "" && echo "✅ 已从云端拉取最新数据并构建 web/out/"
+
 clean:
 	rm -f data/dev.db

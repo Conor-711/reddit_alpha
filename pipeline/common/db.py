@@ -15,6 +15,8 @@ _DB_URL = settings.database_url
 
 
 def _make_engine(url: str) -> Engine:
+    from .config import normalize_db_url
+    url = normalize_db_url(url)  # Supabase 的 postgres:// 串自动转 psycopg + 强制 SSL
     is_sqlite = url.startswith("sqlite")
     kwargs: dict = {"future": True, "pool_pre_ping": True}
     if is_sqlite:
@@ -23,6 +25,9 @@ def _make_engine(url: str) -> Engine:
         if path and path not in (":memory:",):
             Path(path).resolve().parent.mkdir(parents=True, exist_ok=True)
         kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        # 兼容 Supabase 连接池（pgbouncer / transaction 模式）：关闭 psycopg 预编译语句缓存。
+        kwargs["connect_args"] = {"prepare_threshold": None}
     return create_engine(url, **kwargs)
 
 
