@@ -411,8 +411,11 @@ export const zh = {
     bySubHint: "提及来自哪些 subreddit",
     narrativesTitle: "关联叙事",
     ddTitle: "高质量 DD 帖",
-    ddHintPre: "按内容质量 · 共 ",
+    ddHintPre: "共 ",
     ddHintPost: " 篇",
+    ddSortRecent: "最近",
+    ddSortQuality: "质量",
+    ddSortScore: "热度",
   },
   post: {
     back: "← 返回看板",

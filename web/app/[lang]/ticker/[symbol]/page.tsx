@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { SectionTitle, Eyebrow, MiniBar, ScoreNum, ThemeTag, Avatar } from "@/components/ui";
 import { Sparkline } from "@/components/charts/Sparkline";
 import { FeedCard } from "@/components/FeedCard";
+import { TickerDDPosts } from "@/components/TickerDDPosts";
 import { ShareBar } from "@/components/ShareBar";
 import { SaveButton } from "@/components/favorites/SaveButton";
 import { SnooMascot } from "@/components/reddit";
@@ -55,9 +56,6 @@ export default function TickerPage({ params }: { params: { lang: string; symbol:
   const neu = r?.neutral ?? 0;
   const cTotal = bull + bear + neu;
   const pct = (n: number) => (cTotal ? Math.round((n / cTotal) * 100) : 0);
-
-  // 高质量 DD：按内容质量排（深度研究，而非 meme 热度）
-  const dd = [...d.posts].sort((a, b) => (b.quality || 0) - (a.quality || 0));
 
   return (
     // 无卡片分割：各模块靠区块标题 + 分隔线在页面里自然分布；双列用竖向分隔线区分。
@@ -216,16 +214,19 @@ export default function TickerPage({ params }: { params: { lang: string; symbol:
         </section>
       </div>
 
-      {/* ============ 高质量 DD 帖 ============ */}
-      {dd.length > 0 && (
-        <div>
-          <SectionTitle title={t.ddTitle} hint={`${t.ddHintPre}${dd.length}${t.ddHintPost}`} accent="gold" icon="doc" />
-          <div className="grid md:grid-cols-2 gap-4">
-            {dd.map((p) => (
-              <FeedCard key={p.id} p={p} />
-            ))}
-          </div>
-        </div>
+      {/* ============ 高质量 DD 帖（可切排序：最近/质量/热度，默认最近） ============ */}
+      {d.posts.length > 0 && (
+        <TickerDDPosts
+          title={t.ddTitle}
+          hintPre={t.ddHintPre}
+          hintPost={t.ddHintPost}
+          labels={{ recent: t.ddSortRecent, quality: t.ddSortQuality, score: t.ddSortScore }}
+          meta={d.posts.map((p) => ({ created: p.created, quality: p.quality, score: p.score }))}
+        >
+          {d.posts.map((p) => (
+            <FeedCard key={p.id} p={p} />
+          ))}
+        </TickerDDPosts>
       )}
     </div>
   );

@@ -410,8 +410,11 @@ export const en: Dictionary = {
     bySubHint: "Which subreddits the mentions come from",
     narrativesTitle: "Related narratives",
     ddTitle: "High-quality DD posts",
-    ddHintPre: "By content quality · ",
+    ddHintPre: "",
     ddHintPost: " total",
+    ddSortRecent: "Recent",
+    ddSortQuality: "Quality",
+    ddSortScore: "Top",
   },
   post: {
     back: "← Back to dashboard",
