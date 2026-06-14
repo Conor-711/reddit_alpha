@@ -66,7 +66,9 @@ jobs:
           if git diff --cached --quiet; then
             echo "data/dev.db 无变化，跳过提交。"
           else
-            git commit -m "data: 自动刷新 $(date -u +%Y-%m-%d)（GitHub Actions）[skip ci]"
+            # 不要加 [skip ci]：Railway 会把它当作「跳过部署」→ 数据提交了却不上线。
+            # 本工作流只在 schedule/workflow_dispatch 触发（不在 push 触发），故 push 不会自循环，无需 skip 标记。
+            git commit -m "data: 自动刷新 $(date -u +%Y-%m-%d)（GitHub Actions）"
             git push origin HEAD:main
             echo "已推送，Railway 将自动重建上线。"
           fi
