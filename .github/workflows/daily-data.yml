@@ -10,12 +10,12 @@ name: Daily data refresh (Supabase → Railway)
 #   DATABASE_URL（Supabase 连接串，含密码）、QWEN_API_KEY、DEEPSEEK_API_KEY
 
 on:
-  schedule:
-    # 避开整点 :00（GitHub Actions 定时在整点最拥堵、延迟最久）。
-    # 设 22:55 UTC = 北京 06:55；非整点分钟排队少，通常几分钟内启动、落在 7:00 前后。
-    # 注：GitHub schedule 永远不保证准时；要严格准时需外部 workflow_dispatch 触发。
-    - cron: "55 22 * * *"   # 22:55 UTC = 06:55 Asia/Shanghai
-  workflow_dispatch: {}     # 允许在 Actions 页手动「Run workflow」立即跑一次
+  # ⏸️ 定时触发已按用户要求暂停（停掉每日自动 routine）。
+  #    恢复自动运行：取消下面 schedule 两行的注释、重新提交即可（cron 22:55 UTC = 北京 06:55）。
+  #    暂停期间仍可在 Actions 页用「Run workflow」手动跑（workflow_dispatch 保留）。
+  # schedule:
+  #   - cron: "55 22 * * *"   # 22:55 UTC = 06:55 Asia/Shanghai
+  workflow_dispatch: {}     # 手动「Run workflow」立即跑一次
 
 permissions:
   contents: write           # 允许把刷新后的 data/dev.db 提交回 main
