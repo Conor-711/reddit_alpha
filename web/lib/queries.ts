@@ -152,13 +152,18 @@ export function getFeed(opts: { limit?: number; ticker?: string; subreddit?: str
   // p.source='scan'：作者库历史帖（source='author'）只进作者页，不进实时舆情 feed。
   const where: string[] = ["ia.item_type='post'", "p.market = ?", "p.source='scan'"];
   const params: unknown[] = [market];
+  // 近期时间窗：DD 帖只取「最新帖往前 14 天」内的高质量帖，避免老高赞帖永久霸榜、
+  // 新帖被 Arctic 冻在低赞而排不上来（按库内最新帖锚定，兼容静态快照的时间漂移）。
+  where.push("p.created_utc >= datetime((SELECT MAX(created_utc) FROM posts WHERE market = ? AND source='scan'), '-14 day')");
+  params.push(market);
   if (subreddit) { where.push("p.subreddit_id = ?"); params.push(subreddit); }
   if (stance) { where.push("ia.stance = ?"); params.push(stance); }
   if (ticker) {
     where.push("p.id IN (SELECT item_id FROM mentions WHERE item_type='post' AND ticker = ?)");
     params.push(ticker);
   }
-  params.push(limit);
+  // 多取再按标题去重（同一篇 DD 常被 crosspost 到多个版块、标题相同）→ 只留质量最高的一条。
+  params.push(limit * 4);
   const rows = all(
     `SELECT p.id, p.title, p.title_zh, p.selftext, p.permalink, p.subreddit_id, p.flair, p.score,
             p.num_comments, p.created_utc, p.author_id,
@@ -168,7 +173,16 @@ export function getFeed(opts: { limit?: number; ticker?: string; subreddit?: str
       ORDER BY ia.quality_score DESC, p.score DESC LIMIT ?`,
     ...params
   );
-  return mapFeed(rows);
+  const seen = new Set<string>();
+  const picked: any[] = [];
+  for (const r of rows) {
+    const key = String(r.title || "").trim().toLowerCase().replace(/\s+/g, " ");
+    if (key && seen.has(key)) continue;
+    seen.add(key);
+    picked.push(r);
+    if (picked.length >= limit) break;
+  }
+  return mapFeed(picked);
 }
 
 // 今日 Reddit Alpha：过去 24 小时（以库内最新帖为基准）社区含金量最高的信号。
